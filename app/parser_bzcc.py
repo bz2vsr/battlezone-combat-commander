@@ -46,6 +46,43 @@ def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
             }
             players.append(player)
 
+        # Derive state from server info mode (si)
+        server_info_mode = raw.get("si") or raw.get("ServerInfoMode")
+        state = None
+        if isinstance(server_info_mode, int):
+            if server_info_mode in (1, 2):
+                # If any player has non-zero stats, treat as InGame
+                any_stats = any(
+                    (p or {}).get("k") or (p or {}).get("d") or (p or {}).get("s")
+                    for p in raw_players
+                )
+                state = "InGame" if any_stats else "PreGame"
+            elif server_info_mode in (3, 4):
+                state = "InGame"
+            elif server_info_mode == 5:
+                state = "PostGame"
+
+        # NAT type mapping
+        nat_type_raw = raw.get("NAT_TYPE") or raw.get("NATType")
+        nat_type = None
+        if isinstance(nat_type_raw, str):
+            code = nat_type_raw
+        elif isinstance(nat_type_raw, int):
+            code = str(nat_type_raw)
+        else:
+            code = None
+        if code is not None:
+            nat_type = {
+                "0": "NONE",
+                "1": "FULL CONE",
+                "2": "ADDRESS RESTRICTED",
+                "3": "PORT RESTRICTED",
+                "4": "SYMMETRIC",
+                "5": "UNKNOWN",
+                "6": "DETECTION IN PROGRESS",
+                "7": "SUPPORTS UPNP",
+            }.get(code, f"[{code}]")
+
         sess = {
             "id": session_id,
             "source": source,
@@ -54,6 +91,8 @@ def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
             "version": ver,
             "player_count": cur_players,
             "nat": nat,
+            "state": state,
+            "nat_type": nat_type,
             "players": players,
         }
         sessions.append(sess)
