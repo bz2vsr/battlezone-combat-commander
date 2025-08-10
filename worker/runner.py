@@ -1,6 +1,7 @@
 import time
 import sys
 from app.config import settings
+from app.raknet import fetch_raknet_payload
 
 
 def main() -> int:
@@ -10,7 +11,12 @@ def main() -> int:
     try:
         while True:
             time.sleep(interval)
-            # No-op for now; real poller/enrichment to be implemented
+            try:
+                payload = fetch_raknet_payload()
+                if payload is not None:
+                    print(f"[worker] fetched payload with {len(payload.get('GET', []))} sessions", flush=True)
+            except Exception as ex:
+                print(f"[worker] poll error: {ex}", flush=True)
     except KeyboardInterrupt:
         return 0
 

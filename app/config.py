@@ -1,4 +1,8 @@
 import os
+from dotenv import load_dotenv
+
+# Load .env automatically for local/dev usage
+load_dotenv()
 
 
 class Settings:

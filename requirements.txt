@@ -9,7 +9,8 @@ eventlet~=0.36
 # HTTP/JSON
 requests~=2.32
 
-# Database (ORM/migrations to be added in a subsequent step)
+# Database
+SQLAlchemy~=2.0
 psycopg[binary]~=3.2
 
 
