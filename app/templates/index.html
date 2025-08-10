@@ -38,6 +38,7 @@
         </label>
         <label>Min Players <input id="fMin" type="number" min="0" value="0" style="width:64px" /></label>
         <label>Search <input id="fQ" placeholder="session/player" /></label>
+        <label><input id="fVsr" type="checkbox" /> VSR only</label>
       </div>
       <div class="right muted"><span id="connDot" class="dot"></span><span id="connText">Connecting…</span></div>
     </header>
@@ -58,6 +59,7 @@
       const fQ = document.getElementById('fQ');
       const connDot = document.getElementById('connDot');
       const connText = document.getElementById('connText');
+      const fVsr = document.getElementById('fVsr');
       const modal = document.getElementById('modal');
       const mTitle = document.getElementById('mTitle');
       const mBody = document.getElementById('mBody');
@@ -119,6 +121,7 @@
         if (fState.value) p.set('state', fState.value);
         if (fMin.value && +fMin.value>0) p.set('min_players', fMin.value);
         if (fQ.value) p.set('q', fQ.value);
+        if (fVsr.checked) p.set('mod', '1325933293');
         return `/api/v1/sessions/current?${p.toString()}`;
       }
 
@@ -155,6 +158,7 @@
       fState.addEventListener('change', fetchOnce);
       fMin.addEventListener('change', fetchOnce);
       fQ.addEventListener('input', fetchOnce);
+      fVsr.addEventListener('change', fetchOnce);
       fetchOnce();
       startSSE();
     </script>

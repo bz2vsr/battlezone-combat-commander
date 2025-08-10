@@ -29,6 +29,7 @@ def create_app() -> Flask:
         nat_type = request.args.get("nat_type")
         min_players = request.args.get("min_players", type=int)
         q = request.args.get("q")
+        mod = request.args.get("mod")
 
         sessions = get_current_sessions()
         if state:
@@ -39,6 +40,8 @@ def create_app() -> Flask:
             sessions = [s for s in sessions if (s.get("nat_type") or "").lower() == n_norm]
         if isinstance(min_players, int):
             sessions = [s for s in sessions if len(s.get("players") or []) >= min_players]
+        if mod:
+            sessions = [s for s in sessions if (s.get("mod") or "") == mod]
         if q:
             q_norm = q.strip().lower()
             def _match(s):
