@@ -119,6 +119,15 @@ def get_current_sessions(max_age_seconds: int = 120) -> List[Dict[str, Any]]:
                     "name": (sp.stats or {}).get("name"),
                     "score": (sp.stats or {}).get("score"),
                 })
+            # Enriched level/mod if present
+            level_name = None
+            level_image = None
+            if row.mod_id and row.map_file:
+                lid = f"{row.mod_id}:{row.map_file}"
+                lvl = db.get(Level, lid)
+                if lvl:
+                    level_name = lvl.name
+                    level_image = lvl.image_url
             out.append({
                 "id": row.id,
                 "source": row.source,
@@ -129,6 +138,7 @@ def get_current_sessions(max_age_seconds: int = 120) -> List[Dict[str, Any]]:
                 "nat_type": row.nat_type,
                 "map_file": row.map_file,
                 "mod": row.mod_id,
+                "level": {"name": level_name, "image": level_image} if (level_name or level_image) else None,
                 "last_seen_at": (row.last_seen_at.isoformat() if row.last_seen_at else None),
                 "players": players,
             })

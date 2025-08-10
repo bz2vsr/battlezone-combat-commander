@@ -4,6 +4,7 @@ from app.config import settings
 from app.raknet import fetch_raknet_payload
 from app.parser_bzcc import normalize_bzcc_sessions
 from app.store import save_sessions
+from app.enrich import enrich_sessions_levels
 
 
 def main() -> int:
@@ -21,6 +22,12 @@ def main() -> int:
                         if not s.get("name"):
                             s["name"] = None
                     stats = save_sessions(normalized)
+                    try:
+                        if normalized:
+                            enrich = enrich_sessions_levels(normalized)
+                            print(f"[worker] enrich levels/mods: {enrich}", flush=True)
+                    except Exception as ex:
+                        print(f"[worker] enrich error: {ex}", flush=True)
                     print(f"[worker] upsert sessions: {stats}", flush=True)
             except Exception as ex:
                 print(f"[worker] poll error: {ex}", flush=True)
