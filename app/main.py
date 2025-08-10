@@ -1,4 +1,6 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, Response, stream_with_context
+import json
+import time
 from app.store import get_current_sessions, get_session_detail
 from app.config import settings
 
@@ -15,10 +17,29 @@ def create_app() -> Flask:
     def sessions_current():
         # Basic filter: ?state=InGame (case-insensitive)
         state = request.args.get("state")
+        nat_type = request.args.get("nat_type")
+        min_players = request.args.get("min_players", type=int)
+        q = request.args.get("q")
+
         sessions = get_current_sessions()
         if state:
             s_norm = state.strip().lower()
             sessions = [s for s in sessions if (s.get("state") or "").lower() == s_norm]
+        if nat_type:
+            n_norm = nat_type.strip().lower()
+            sessions = [s for s in sessions if (s.get("nat_type") or "").lower() == n_norm]
+        if isinstance(min_players, int):
+            sessions = [s for s in sessions if len(s.get("players") or []) >= min_players]
+        if q:
+            q_norm = q.strip().lower()
+            def _match(s):
+                if (s.get("name") or "").lower().find(q_norm) >= 0:
+                    return True
+                for p in s.get("players") or []:
+                    if ((p.get("name") or "").lower().find(q_norm) >= 0):
+                        return True
+                return False
+            sessions = [s for s in sessions if _match(s)]
         return jsonify({"sessions": sessions})
 
     @app.get("/api/v1/sessions/<path:sid>")
@@ -27,6 +48,20 @@ def create_app() -> Flask:
         if data is None:
             return jsonify({"error": "not_found"}), 404
         return jsonify(data)
+
+    @app.get("/api/v1/stream/sessions")
+    def stream_sessions():
+        # Simple SSE stream with 5s updates from DB
+        def _gen():
+            last_payload = None
+            while True:
+                sessions = get_current_sessions()
+                payload = json.dumps({"sessions": sessions})
+                if payload != last_payload:
+                    yield f"data: {payload}\n\n"
+                    last_payload = payload
+                time.sleep(5)
+        return Response(stream_with_context(_gen()), mimetype="text/event-stream")
 
     return app
 
