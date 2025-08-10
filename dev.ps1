@@ -11,7 +11,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$repoRoot = $PSScriptRoot
 Set-Location $repoRoot
 
 function Write-Info($msg) { Write-Host "[dev] $msg" -ForegroundColor Cyan }
@@ -68,7 +68,7 @@ Set-Location "$repoRoot"
   Write-Host ""
   Write-Host "Open: http://127.0.0.1:$WebPort/" -ForegroundColor Green
   Write-Host "API:  http://127.0.0.1:$WebPort/api/v1/sessions/current" -ForegroundColor Green
-  Write-Host "Stop: .\scripts\dev.ps1 stop" -ForegroundColor Yellow
+  Write-Host "Stop: .\dev.ps1 stop" -ForegroundColor Yellow
 }
 
 function Stop-Services {
