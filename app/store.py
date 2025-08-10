@@ -52,18 +52,26 @@ def save_sessions(normalized: List[Dict[str, Any]]) -> Dict[str, int]:
                 row.last_seen_at = now
                 updated += 1
 
-            # Upsert minimal session_players (replace for simplicity now)
-            db.query(SessionPlayer).filter(SessionPlayer.session_id == row.id).delete()
+            # Upsert session_players by (session_id, slot) to avoid duplicates
             for p in s.get("players", []) or []:
-                sp = SessionPlayer(
-                    session_id=row.id,
-                    player_id=None,
-                    slot=p.get("slot"),
-                    team_id=None,
-                    is_host=True if p.get("slot") == 1 else None,
-                    stats={**(p.get("stats") or {}), **({"name": p.get("name")} if p.get("name") else {})},
-                )
-                db.add(sp)
+                slot = p.get("slot")
+                existing = db.execute(
+                    select(SessionPlayer).where(SessionPlayer.session_id == row.id, SessionPlayer.slot == slot)
+                ).scalar_one_or_none()
+                payload_stats = {**(p.get("stats") or {}), **({"name": p.get("name")} if p.get("name") else {})}
+                if existing is None:
+                    sp = SessionPlayer(
+                        session_id=row.id,
+                        player_id=None,
+                        slot=slot,
+                        team_id=None,
+                        is_host=True if slot == 1 else None,
+                        stats=payload_stats,
+                    )
+                    db.add(sp)
+                else:
+                    existing.stats = payload_stats
+                    existing.is_host = True if slot == 1 else None
                 players_upserted += 1
 
         # Optionally mark stale sessions as ended

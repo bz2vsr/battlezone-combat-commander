@@ -15,6 +15,7 @@
       h3 { margin:6px 0 8px; font-size:16px; }
       .players { margin-top:8px; font-size:13px; line-height:1.6; }
       .row { display:flex; gap:8px; align-items:center; flex-wrap: wrap; }
+      .empty { grid-column: 1 / -1; text-align:center; color:#a9b3c2; padding:40px 16px; border:1px dashed #2a3953; border-radius:10px; background:#0f1622; }
     </style>
   </head>
   <body>
@@ -40,7 +41,16 @@
 
       function render(data) {
         grid.innerHTML = '';
-        (data.sessions || []).forEach(s => {
+        const sessions = data.sessions || [];
+        if (sessions.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'empty';
+          empty.setAttribute('aria-live', 'polite');
+          empty.innerHTML = `No sessions online right now.<br/><span class="muted">Waiting for live updates…</span>`;
+          grid.appendChild(empty);
+          return;
+        }
+        sessions.forEach(s => {
           const card = document.createElement('div');
           card.className = 'card';
           card.innerHTML = `

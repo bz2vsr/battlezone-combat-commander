@@ -5,6 +5,7 @@ from typing import Optional
 
 from sqlalchemy import String, BigInteger, ForeignKey, DateTime, Integer, JSON, Text, Boolean
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy import UniqueConstraint, Index
 
 
 class Base(DeclarativeBase):
@@ -23,6 +24,9 @@ class Player(Base):
 
 class Identity(Base):
     __tablename__ = "identities"
+    __table_args__ = (
+        UniqueConstraint("provider", "external_id", name="uq_identities_provider_external"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     player_id: Mapped[int] = mapped_column(ForeignKey("players.id", ondelete="CASCADE"), index=True)
@@ -52,6 +56,10 @@ class Session(Base):
 
 class SessionPlayer(Base):
     __tablename__ = "session_players"
+    __table_args__ = (
+        UniqueConstraint("session_id", "slot", name="uq_session_players_session_slot"),
+        Index("ix_session_players_session", "session_id"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     session_id: Mapped[str] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"), index=True)
