@@ -19,10 +19,18 @@ def decode_raknet_guid(guid: str) -> bytes:
     return base64.b64decode(std)
 
 
+def sanitize_text(text: str) -> str:
+    if text is None:
+        return ""
+    # Remove NULs and non-printable characters
+    return "".join(ch for ch in text.replace("\x00", "") if ch.isprintable())
+
+
 def b64_to_str(s: str) -> str:
     try:
-        return base64.b64decode(s + "==").decode("utf-8", errors="ignore").strip("\x00")
+        decoded = base64.b64decode(s + "==").decode("utf-8", errors="ignore")
+        return sanitize_text(decoded)
     except Exception:
-        return s
+        return sanitize_text(s)
 
 

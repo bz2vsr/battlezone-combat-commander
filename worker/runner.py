@@ -17,6 +17,10 @@ def main() -> int:
                 payload = fetch_raknet_payload()
                 if payload is not None:
                     normalized = normalize_bzcc_sessions(payload)
+                    # If any names are empty after sanitization, leave as None
+                    for s in normalized:
+                        if not s.get("name"):
+                            s["name"] = None
                     stats = save_sessions(normalized)
                     print(f"[worker] upsert sessions: {stats}", flush=True)
             except Exception as ex:
