@@ -21,6 +21,10 @@ def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
         name = b64_to_str(raw.get("n", "")) or None
         tps = raw.get("tps") or raw.get("TPS")
         ver = raw.get("v") or raw.get("Version")
+        map_file = raw.get("m") or raw.get("Map")
+        mm = raw.get("mm") or ""
+        mods = [m for m in str(mm).split(";") if m]
+        mod = mods[0] if mods else ("0" if ver else None)
         cur_players = 0
         if isinstance(raw.get("pl"), list):
             cur_players = len([p for p in raw["pl"] if p is not None])
@@ -94,6 +98,9 @@ def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
             "state": state,
             "nat_type": nat_type,
             "players": players,
+            "map_file": map_file,
+            "mod": mod,
+            "mods": mods,
         }
         sessions.append(sess)
     return sessions

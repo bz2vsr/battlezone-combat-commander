@@ -23,6 +23,18 @@ def ensure_alter_tables() -> None:
             ADD COLUMN IF NOT EXISTS nat_type VARCHAR(32);
             """
         ))
+        conn.execute(text(
+            """
+            ALTER TABLE IF EXISTS sessions
+            ADD COLUMN IF NOT EXISTS map_file VARCHAR(128);
+            """
+        ))
+        conn.execute(text(
+            """
+            ALTER TABLE IF EXISTS sessions
+            ADD COLUMN IF NOT EXISTS mod_id VARCHAR(32);
+            """
+        ))
         # Ensure unique constraints and indexes (idempotent where possible)
         conn.execute(text(
             """

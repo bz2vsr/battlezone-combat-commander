@@ -48,6 +48,8 @@ class Session(Base):
     tps: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     version: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     level_map_id: Mapped[Optional[str]] = mapped_column(String(256), index=True)
+    map_file: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    mod_id: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     attributes: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, index=True)

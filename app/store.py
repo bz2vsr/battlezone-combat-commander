@@ -36,6 +36,8 @@ def save_sessions(normalized: List[Dict[str, Any]]) -> Dict[str, int]:
                     name=s.get("name"),
                     tps=s.get("tps"),
                     version=s.get("version"),
+                    map_file=s.get("map_file"),
+                    mod_id=s.get("mod"),
                     level_map_id=None,
                     attributes=None,
                     started_at=now,
@@ -49,6 +51,8 @@ def save_sessions(normalized: List[Dict[str, Any]]) -> Dict[str, int]:
                 row.version = s.get("version")
                 row.state = s.get("state")
                 row.nat_type = s.get("nat_type")
+                row.map_file = s.get("map_file")
+                row.mod_id = s.get("mod")
                 row.last_seen_at = now
                 updated += 1
 
@@ -107,6 +111,8 @@ def get_current_sessions(max_age_seconds: int = 120) -> List[Dict[str, Any]]:
                 "version": row.version,
                 "state": row.state,
                 "nat_type": row.nat_type,
+                "map_file": row.map_file,
+                "mod": row.mod_id,
                 "last_seen_at": (row.last_seen_at.isoformat() if row.last_seen_at else None),
                 "players": players,
             })

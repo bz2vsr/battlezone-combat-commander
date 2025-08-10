@@ -95,6 +95,7 @@
             </div>
             <h3>${(s.name || s.id)}</h3>
             <div class="muted">${s.id}</div>
+            <div class="muted">${s.map_file ? ('Map: ' + s.map_file) : ''} ${s.mod ? ('• Mod: ' + s.mod) : ''}</div>
             <div class="players">
               ${(s.players||[]).map(p => `${p.is_host? '★ ' : ''}${p.name || 'Player'} (slot ${p.slot}${p.score!=null? ', score '+p.score : ''})`).join('<br/>')}
             </div>
