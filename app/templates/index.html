@@ -6,38 +6,71 @@
     <title>BZCC GameWatch (Dev)</title>
     <style>
       body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#0b0f14; color:#e6e9ef; margin:0; }
-      header { padding: 12px 16px; background:#101621; border-bottom:1px solid #1b2535; display:flex; gap:12px; align-items:center; }
+      header { padding: 12px 16px; background:#101621; border-bottom:1px solid #1b2535; display:flex; gap:12px; align-items:center; justify-content:space-between; }
+      .left, .right { display:flex; gap:12px; align-items:center; }
       input, select { background:#0f1622; color:#e6e9ef; border:1px solid #243149; padding:6px 8px; border-radius:6px; }
       .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:12px; padding:16px; }
-      .card { border:1px solid #1b2535; background:#0f1622; padding:12px; border-radius:10px; box-shadow: 0 0 0 1px #0b111b inset; }
+      .card { border:1px solid #1b2535; background:#0f1622; padding:12px; border-radius:10px; box-shadow: 0 0 0 1px #0b111b inset; cursor:pointer; }
       .badge { font-size:12px; padding:2px 6px; border-radius:4px; border:1px solid #2a3953; }
       .muted { color:#a9b3c2; font-size:12px; }
       h3 { margin:6px 0 8px; font-size:16px; }
       .players { margin-top:8px; font-size:13px; line-height:1.6; }
       .row { display:flex; gap:8px; align-items:center; flex-wrap: wrap; }
       .empty { grid-column: 1 / -1; text-align:center; color:#a9b3c2; padding:40px 16px; border:1px dashed #2a3953; border-radius:10px; background:#0f1622; }
+      .dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; background:#586173; }
+      .dot.ok { background:#22c55e; }
+      .dot.err { background:#ef4444; }
+      .modal { position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; }
+      .modal .panel { width:min(720px, 94vw); max-height:90vh; overflow:auto; background:#0f1622; border:1px solid #1b2535; border-radius:10px; padding:16px; }
     </style>
   </head>
   <body>
     <header>
-      <strong>GameWatch (Dev)</strong>
-      <label>State
-        <select id="fState">
-          <option value="">Any</option>
-          <option>InGame</option>
-          <option>PreGame</option>
-          <option>PostGame</option>
-        </select>
-      </label>
-      <label>Min Players <input id="fMin" type="number" min="0" value="0" style="width:64px" /></label>
-      <label>Search <input id="fQ" placeholder="session/player" /></label>
+      <div class="left">
+        <strong>GameWatch (Dev)</strong>
+        <label>State
+          <select id="fState">
+            <option value="">Any</option>
+            <option>InGame</option>
+            <option>PreGame</option>
+            <option>PostGame</option>
+          </select>
+        </label>
+        <label>Min Players <input id="fMin" type="number" min="0" value="0" style="width:64px" /></label>
+        <label>Search <input id="fQ" placeholder="session/player" /></label>
+      </div>
+      <div class="right muted"><span id="connDot" class="dot"></span><span id="connText">Connecting…</span></div>
     </header>
     <div id="grid" class="grid"></div>
+    <div id="modal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
+      <div class="panel">
+        <div class="row" style="justify-content:space-between">
+          <strong id="mTitle">Session</strong>
+          <button id="mClose" style="background:#0b111b;color:#e6e9ef;border:1px solid #243149;padding:4px 8px;border-radius:6px">Close</button>
+        </div>
+        <pre id="mBody" class="muted" style="white-space:pre-wrap"></pre>
+      </div>
+    </div>
     <script>
       const grid = document.getElementById('grid');
       const fState = document.getElementById('fState');
       const fMin = document.getElementById('fMin');
       const fQ = document.getElementById('fQ');
+      const connDot = document.getElementById('connDot');
+      const connText = document.getElementById('connText');
+      const modal = document.getElementById('modal');
+      const mTitle = document.getElementById('mTitle');
+      const mBody = document.getElementById('mBody');
+      document.getElementById('mClose').onclick = () => { modal.style.display = 'none'; modal.setAttribute('aria-hidden','true'); };
+      modal.addEventListener('click', (e)=>{ if(e.target===modal){ modal.style.display='none'; modal.setAttribute('aria-hidden','true'); }});
+
+      function timeAgo(iso){
+        if(!iso) return '';
+        const s = Math.max(0, Math.floor((Date.now()-Date.parse(iso))/1000));
+        if(s<60) return `${s}s ago`;
+        const m=Math.floor(s/60); if(m<60) return `${m}m ago`;
+        const h=Math.floor(m/60); return `${h}h ago`;
+      }
 
       function render(data) {
         grid.innerHTML = '';
@@ -58,6 +91,7 @@
               <span class="badge">${s.state || 'Unknown'}</span>
               <span class="badge">${s.nat_type || ''}</span>
               <span class="muted">${s.version || ''}</span>
+              <span class="muted" style="margin-left:auto">${(s.players||[]).length} player(s) • ${timeAgo(s.last_seen_at)}</span>
             </div>
             <h3>${(s.name || s.id)}</h3>
             <div class="muted">${s.id}</div>
@@ -65,6 +99,16 @@
               ${(s.players||[]).map(p => `${p.is_host? '★ ' : ''}${p.name || 'Player'} (slot ${p.slot}${p.score!=null? ', score '+p.score : ''})`).join('<br/>')}
             </div>
           `;
+          card.onclick = async () => {
+            try {
+              const res = await fetch(`/api/v1/sessions/${encodeURIComponent(s.id)}`);
+              const detail = await res.json();
+              mTitle.textContent = s.name || s.id;
+              mBody.textContent = JSON.stringify(detail, null, 2);
+              modal.style.display = 'flex';
+              modal.setAttribute('aria-hidden','false');
+            } catch (e) {}
+          };
           grid.appendChild(card);
         });
       }
@@ -87,6 +131,8 @@
         if (sse) sse.close();
         sse = new EventSource('/api/v1/stream/sessions');
         sse.onmessage = (ev) => {
+          connDot.className = 'dot ok';
+          connText.textContent = 'Live';
           const payload = JSON.parse(ev.data);
           // Apply client-side filters as well
           const req = new URL(url(), window.location);
@@ -102,7 +148,7 @@
           });
           render({sessions});
         };
-        sse.onerror = ()=>{ sse && sse.close(); setTimeout(startSSE, 5000); };
+        sse.onerror = ()=>{ connDot.className = 'dot err'; connText.textContent = 'Reconnecting…'; sse && sse.close(); setTimeout(startSSE, 5000); };
       }
 
       fState.addEventListener('change', fetchOnce);
