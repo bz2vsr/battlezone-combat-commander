@@ -1,0 +1,107 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BZCC GameWatch (Dev)</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#0b0f14; color:#e6e9ef; margin:0; }
+      header { padding: 12px 16px; background:#101621; border-bottom:1px solid #1b2535; display:flex; gap:12px; align-items:center; }
+      input, select { background:#0f1622; color:#e6e9ef; border:1px solid #243149; padding:6px 8px; border-radius:6px; }
+      .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:12px; padding:16px; }
+      .card { border:1px solid #1b2535; background:#0f1622; padding:12px; border-radius:10px; box-shadow: 0 0 0 1px #0b111b inset; }
+      .badge { font-size:12px; padding:2px 6px; border-radius:4px; border:1px solid #2a3953; }
+      .muted { color:#a9b3c2; font-size:12px; }
+      h3 { margin:6px 0 8px; font-size:16px; }
+      .players { margin-top:8px; font-size:13px; line-height:1.6; }
+      .row { display:flex; gap:8px; align-items:center; flex-wrap: wrap; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <strong>GameWatch (Dev)</strong>
+      <label>State
+        <select id="fState">
+          <option value="">Any</option>
+          <option>InGame</option>
+          <option>PreGame</option>
+          <option>PostGame</option>
+        </select>
+      </label>
+      <label>Min Players <input id="fMin" type="number" min="0" value="0" style="width:64px" /></label>
+      <label>Search <input id="fQ" placeholder="session/player" /></label>
+    </header>
+    <div id="grid" class="grid"></div>
+    <script>
+      const grid = document.getElementById('grid');
+      const fState = document.getElementById('fState');
+      const fMin = document.getElementById('fMin');
+      const fQ = document.getElementById('fQ');
+
+      function render(data) {
+        grid.innerHTML = '';
+        (data.sessions || []).forEach(s => {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.innerHTML = `
+            <div class="row">
+              <span class="badge">${s.state || 'Unknown'}</span>
+              <span class="badge">${s.nat_type || ''}</span>
+              <span class="muted">${s.version || ''}</span>
+            </div>
+            <h3>${(s.name || s.id)}</h3>
+            <div class="muted">${s.id}</div>
+            <div class="players">
+              ${(s.players||[]).map(p => `${p.is_host? '★ ' : ''}${p.name || 'Player'} (slot ${p.slot}${p.score!=null? ', score '+p.score : ''})`).join('<br/>')}
+            </div>
+          `;
+          grid.appendChild(card);
+        });
+      }
+
+      function url() {
+        const p = new URLSearchParams();
+        if (fState.value) p.set('state', fState.value);
+        if (fMin.value && +fMin.value>0) p.set('min_players', fMin.value);
+        if (fQ.value) p.set('q', fQ.value);
+        return `/api/v1/sessions/current?${p.toString()}`;
+      }
+
+      async function fetchOnce() {
+        const res = await fetch(url());
+        render(await res.json());
+      }
+
+      let sse;
+      function startSSE(){
+        if (sse) sse.close();
+        sse = new EventSource('/api/v1/stream/sessions');
+        sse.onmessage = (ev) => {
+          const payload = JSON.parse(ev.data);
+          // Apply client-side filters as well
+          const req = new URL(url(), window.location);
+          const state = req.searchParams.get('state');
+          const min = +(req.searchParams.get('min_players')||0);
+          const q = (req.searchParams.get('q')||'').toLowerCase();
+          let sessions = payload.sessions || [];
+          if (state) sessions = sessions.filter(s => (s.state||'').toLowerCase()===state.toLowerCase());
+          if (min>0) sessions = sessions.filter(s => (s.players||[]).length>=min);
+          if (q) sessions = sessions.filter(s => {
+            if ((s.name||'').toLowerCase().includes(q)) return true;
+            return (s.players||[]).some(p => (p.name||'').toLowerCase().includes(q));
+          });
+          render({sessions});
+        };
+        sse.onerror = ()=>{ sse && sse.close(); setTimeout(startSSE, 5000); };
+      }
+
+      fState.addEventListener('change', fetchOnce);
+      fMin.addEventListener('change', fetchOnce);
+      fQ.addEventListener('input', fetchOnce);
+      fetchOnce();
+      startSSE();
+    </script>
+  </body>
+  </html>
+
+

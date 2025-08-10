@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, Response, stream_with_context
+from flask import Flask, jsonify, request, Response, stream_with_context, render_template
 import json
 import time
 from app.store import get_current_sessions, get_session_detail
@@ -62,6 +62,10 @@ def create_app() -> Flask:
                     last_payload = payload
                 time.sleep(5)
         return Response(stream_with_context(_gen()), mimetype="text/event-stream")
+
+    @app.get("/")
+    def index():
+        return render_template("index.html")
 
     return app
 
