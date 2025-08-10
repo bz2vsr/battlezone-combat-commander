@@ -88,7 +88,11 @@ def save_sessions(normalized: List[Dict[str, Any]]) -> Dict[str, int]:
                     existing.team_id = p.get("team_id")
                 players_upserted += 1
             # delete players whose slots disappeared
-            db.query(SessionPlayer).filter(SessionPlayer.session_id == row.id, SessionPlayer.slot.not_in(current_slots)).delete(synchronize_session=False)
+            if current_slots:
+                db.query(SessionPlayer).filter(
+                    SessionPlayer.session_id == row.id,
+                    ~SessionPlayer.slot.in_(current_slots),
+                ).delete(synchronize_session=False)
 
             # Upsert level and mod records minimally
             mod_id = s.get("mod")

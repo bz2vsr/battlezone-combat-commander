@@ -27,12 +27,28 @@ def sanitize_text(text: str) -> str:
     return "".join(ch for ch in text.replace("\x00", "") if ch.isprintable())
 
 
-def b64_to_str(s: str) -> str:
+_B64_FILTER = re.compile(r"[^A-Za-z0-9+/=_-]")
+
+
+def _decode_base64_clean(raw: str) -> bytes:
+    if raw is None:
+        return b""
+    s = _B64_FILTER.sub("", raw)
+    # normalize URL-safe to standard
+    s = s.replace('-', '+').replace('_', '/')
+    # pad to multiple of 4
+    pad = (-len(s)) % 4
+    if pad:
+        s += "=" * pad
     try:
-        decoded = base64.b64decode(s + "==").decode("utf-8", errors="ignore")
-        return sanitize_text(decoded)
+        return base64.b64decode(s, validate=False)
     except Exception:
-        return sanitize_text(s)
+        # last resort: return ascii bytes of original
+        return (raw or "").encode('utf-8', errors='ignore')
+
+
+def b64_to_str(s: str) -> str:
+    return sanitize_text(_decode_base64_clean(s).decode("utf-8", errors="ignore"))
 
 
 def sanitize_ascii(text: str) -> str:
@@ -52,11 +68,7 @@ def sanitize_ascii(text: str) -> str:
 
 
 def b64_to_ascii(s: str) -> str:
-    try:
-        decoded = base64.b64decode(s + "==")
-        return sanitize_ascii(decoded.decode("utf-8", errors="ignore"))
-    except Exception:
-        return sanitize_ascii(s)
+    return sanitize_ascii(_decode_base64_clean(s).decode("utf-8", errors="ignore"))
 
 
 _TITLE_ALLOWED = re.compile(r"[^A-Za-z0-9 _:\-\'\(\)\[\]\.] +")
