@@ -1,0 +1,15 @@
+Flask~=3.0
+gunicorn~=21.2
+python-dotenv~=1.0
+
+# Realtime stack (to be used when enabling WebSockets)
+flask-socketio~=5.3
+eventlet~=0.36
+
+# HTTP/JSON
+requests~=2.32
+
+# Database (ORM/migrations to be added in a subsequent step)
+psycopg[binary]~=3.2
+
+

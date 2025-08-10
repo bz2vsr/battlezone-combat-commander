@@ -1,2 +1,20 @@
-/MultiplayerSessionList
+/.venv/
 .env
+__pycache__/
+*.py[cod]
+*.log
+
+# OS/IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# References (not deployed)
+/MultiplayerSessionList
+/references/
+
+# Build artifacts
+/build/
+/dist/
+*.egg-info/
