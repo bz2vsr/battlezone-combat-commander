@@ -61,8 +61,13 @@ def save_sessions(normalized: List[Dict[str, Any]]) -> Dict[str, int]:
                 updated += 1
 
             # Upsert session_players by (session_id, slot) to avoid duplicates
+            # Upsert session players by slot; remove any stale rows not present now
+            current_slots = set()
             for p in s.get("players", []) or []:
                 slot = p.get("slot")
+                if slot is None:
+                    continue
+                current_slots.add(slot)
                 existing = db.execute(
                     select(SessionPlayer).where(SessionPlayer.session_id == row.id, SessionPlayer.slot == slot)
                 ).scalar_one_or_none()
@@ -82,6 +87,8 @@ def save_sessions(normalized: List[Dict[str, Any]]) -> Dict[str, int]:
                     existing.is_host = True if slot == 1 else None
                     existing.team_id = p.get("team_id")
                 players_upserted += 1
+            # delete players whose slots disappeared
+            db.query(SessionPlayer).filter(SessionPlayer.session_id == row.id, SessionPlayer.slot.not_in(current_slots)).delete(synchronize_session=False)
 
             # Upsert level and mod records minimally
             mod_id = s.get("mod")

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from app.util_base64 import decode_raknet_guid, b64_to_str, sanitize_text
+from app.util_base64 import decode_raknet_guid, b64_to_str, b64_to_ascii, sanitize_text
 
 
 def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -18,7 +18,9 @@ def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
             nat_hex = nat
         source = raw.get("proxySource") or "Rebellion"
         session_id = f"{source}:{nat_hex}"
-        session_name = b64_to_str(raw.get("n", "")) or None
+        # Some servers set odd characters; prefer a strict ASCII-safe variant
+        session_name_raw = b64_to_str(raw.get("n", "")) or None
+        session_name = b64_to_ascii(raw.get("n", "")) or session_name_raw
         tps = raw.get("tps") or raw.get("TPS")
         ver = raw.get("v") or raw.get("Version")
         map_file = raw.get("m") or raw.get("Map")
@@ -35,14 +37,22 @@ def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
             if p is None:
                 continue
             pid = p.get("i")
-            player_name = b64_to_str(p.get("n", "")) or None
+            player_name_raw = b64_to_str(p.get("n", "")) or None
+            player_name = b64_to_ascii(p.get("n", "")) or player_name_raw
+            slot_val = p.get("t")
+            team_val = None
+            if isinstance(slot_val, int):
+                if 1 <= slot_val <= 5:
+                    team_val = 1
+                elif 6 <= slot_val <= 10:
+                    team_val = 2
             player = {
                 "raw_id": pid,
                 "steam_id": pid[1:] if isinstance(pid, str) and pid.startswith("S") else None,
                 "gog_id": pid[1:] if isinstance(pid, str) and pid.startswith("G") else None,
                 "name": player_name,
-                "slot": p.get("t"),
-                "team_id": p.get("t"),
+                "slot": slot_val,
+                "team_id": team_val,
                 "stats": {
                     "kills": p.get("k"),
                     "deaths": p.get("d"),

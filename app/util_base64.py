@@ -34,3 +34,27 @@ def b64_to_str(s: str) -> str:
         return sanitize_text(s)
 
 
+def sanitize_ascii(text: str) -> str:
+    if text is None:
+        return ""
+    # Keep only basic printable ASCII 32..126; collapse whitespace
+    filtered = []
+    for ch in text:
+        code = ord(ch)
+        if 32 <= code <= 126:
+            filtered.append(ch)
+    out = "".join(filtered).strip()
+    # Collapse multiple spaces
+    while "  " in out:
+        out = out.replace("  ", " ")
+    return out
+
+
+def b64_to_ascii(s: str) -> str:
+    try:
+        decoded = base64.b64decode(s + "==")
+        return sanitize_ascii(decoded.decode("utf-8", errors="ignore"))
+    except Exception:
+        return sanitize_ascii(s)
+
+

@@ -91,6 +91,25 @@
         sessions.forEach(s => {
           const card = document.createElement('div');
           card.className = 'card';
+
+          const title = (((s.level && s.level.name) || '') + ' ' + ((s.name || ''))).toLowerCase();
+          const isFFA = /(ffa|deathmatch|\bdm\b)/.test(title);
+          const playersHtml = `
+            <div class="players">
+              ${(s.players||[]).map(p => `${p.is_host? '★ ' : ''}${p.name || 'Player'}${p.score!=null? ' (score '+p.score+')' : ''}`).join('<br/>')}
+            </div>`;
+          const teamsHtml = `
+            <div class="teams">
+              <div class="team">
+                <h4>Team 1</h4>
+                ${(s.players||[]).filter(p=>!p.team_id || p.team_id===1).map(p => `${p.is_host? '★ ' : ''}${p.name || 'Player'}${p.score!=null? ' (score '+p.score+')' : ''}`).join('<br/>') || '<span class="muted">Open</span>'}
+              </div>
+              <div class="team">
+                <h4>Team 2</h4>
+                ${(s.players||[]).filter(p=>p.team_id===2).map(p => `${p.is_host? '★ ' : ''}${p.name || 'Player'}${p.score!=null? ' (score '+p.score+')' : ''}`).join('<br/>') || '<span class="muted">Open</span>'}
+              </div>
+            </div>`;
+
           card.innerHTML = `
             <div class="row">
               <span class="badge">${s.state || 'Unknown'}</span>
@@ -101,17 +120,8 @@
             <h3>${(s.name || s.id)}</h3>
             <div class="muted">${s.id}</div>
             <div class="muted">${s.level && s.level.name ? ('Map: ' + s.level.name) : (s.map_file? ('Map: ' + s.map_file) : '')} ${s.mod ? ('• Mod: ' + s.mod) : ''}</div>
-            ${s.level && s.level.image ? `<img alt="map" src="${s.level.image}" style="margin-top:8px;border-radius:8px;max-width:100%;height:auto;max-height:200px;object-fit:cover;border:1px solid #1b2535;cursor:zoom-in" onclick="(function(src){const m=document.createElement('div');m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center';m.onclick=()=>document.body.removeChild(m);const i=document.createElement('img');i.src=src;i.style.cssText='max-width:92vw;max-height:92vh;border-radius:10px;border:1px solid #1b2535';m.appendChild(i);document.body.appendChild(m);})('${s.level.image}')"/>` : ''}
-            <div class="teams">
-              <div class="team">
-                <h4>Team 1</h4>
-                ${(s.players||[]).filter(p=>!p.team_id || p.team_id===1).map(p => `${p.is_host? '★ ' : ''}${p.name || 'Player'}${p.score!=null? ' (score '+p.score+')' : ''}`).join('<br/>') || '<span class="muted">Open</span>'}
-              </div>
-              <div class="team">
-                <h4>Team 2</h4>
-                ${(s.players||[]).filter(p=>p.team_id===2).map(p => `${p.is_host? '★ ' : ''}${p.name || 'Player'}${p.score!=null? ' (score '+p.score+')' : ''}`).join('<br/>') || '<span class="muted">Computer</span>'}
-              </div>
-            </div>
+            ${s.level && s.level.image ? `<img alt="map" src="${s.level.image}" style="margin-top:8px;border-radius:8px;max-width:100%;height:auto;max-height:200px;object-fit:cover;border:1px solid #1b2535;cursor:zoom-in" onclick="event.stopPropagation(); (function(src){const m=document.createElement('div');m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:9999';m.onclick=()=>document.body.removeChild(m);const i=document.createElement('img');i.src=src;i.style.cssText='max-width:92vw;max-height:92vh;border-radius:10px;border:1px solid #1b2535';m.appendChild(i);document.body.appendChild(m);})('${s.level.image}')"/>` : ''}
+            ${isFFA ? playersHtml : teamsHtml}
           `;
           card.onclick = async () => {
             try {
