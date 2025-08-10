@@ -73,7 +73,11 @@ Set-Location "$repoRoot"
 
 function Stop-Services {
   Write-Info "Stopping jobs"
-  Get-Job -Name bzcc-* -ErrorAction SilentlyContinue | Stop-Job -Force -PassThru | Remove-Job -Force -ErrorAction SilentlyContinue
+  $jobs = Get-Job -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'bzcc-*' }
+  if ($jobs) {
+    $jobs | ForEach-Object { try { Stop-Job -Id $_.Id -ErrorAction SilentlyContinue } catch {} }
+    $jobs | ForEach-Object { try { Remove-Job -Id $_.Id -Force -ErrorAction SilentlyContinue } catch {} }
+  }
   # Fallback: kill stray processes by command line match
   $procs = Get-CimInstance Win32_Process | Where-Object {
     ($_.CommandLine -match 'worker.runner') -or ($_.CommandLine -match 'flask --app app.main run')
