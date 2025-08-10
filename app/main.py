@@ -2,12 +2,21 @@ from flask import Flask, jsonify, request, Response, stream_with_context, render
 import json
 import time
 from app.store import get_current_sessions, get_session_detail
+from app.migrate import create_all, ensure_alter_tables
 from app.config import settings
 
 
 def create_app() -> Flask:
     app = Flask(__name__)
     app.config['SECRET_KEY'] = settings.secret_key
+
+    # Ensure DB schema exists (idempotent)
+    try:
+        create_all()
+        ensure_alter_tables()
+    except Exception as ex:
+        # Defer hard failure to first DB access; still log to console
+        print(f"[app] schema init warning: {ex}", flush=True)
 
     @app.get("/healthz")
     def healthz():
