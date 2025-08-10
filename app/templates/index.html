@@ -15,6 +15,9 @@
       .muted { color:#a9b3c2; font-size:12px; }
       h3 { margin:6px 0 8px; font-size:16px; }
       .players { margin-top:8px; font-size:13px; line-height:1.6; }
+      .teams { display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:8px; }
+      .team { border:1px solid #1b2535; border-radius:8px; padding:8px; background:#0b111b; }
+      .team h4 { margin:0 0 6px; font-size:13px; color:#a9b3c2; font-weight:600; }
       .row { display:flex; gap:8px; align-items:center; flex-wrap: wrap; }
       .empty { grid-column: 1 / -1; text-align:center; color:#a9b3c2; padding:40px 16px; border:1px dashed #2a3953; border-radius:10px; background:#0f1622; }
       .dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; background:#586173; }
@@ -98,9 +101,16 @@
             <h3>${(s.name || s.id)}</h3>
             <div class="muted">${s.id}</div>
             <div class="muted">${s.level && s.level.name ? ('Map: ' + s.level.name) : (s.map_file? ('Map: ' + s.map_file) : '')} ${s.mod ? ('• Mod: ' + s.mod) : ''}</div>
-            ${s.level && s.level.image ? `<img alt="map" src="${s.level.image}" style="margin-top:8px;border-radius:8px;max-width:100%;height:auto;border:1px solid #1b2535;"/>` : ''}
-            <div class="players">
-              ${(s.players||[]).map(p => `${p.is_host? '★ ' : ''}${p.name || 'Player'} (slot ${p.slot}${p.score!=null? ', score '+p.score : ''})`).join('<br/>')}
+            ${s.level && s.level.image ? `<img alt="map" src="${s.level.image}" style="margin-top:8px;border-radius:8px;max-width:100%;height:auto;max-height:200px;object-fit:cover;border:1px solid #1b2535;cursor:zoom-in" onclick="(function(src){const m=document.createElement('div');m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center';m.onclick=()=>document.body.removeChild(m);const i=document.createElement('img');i.src=src;i.style.cssText='max-width:92vw;max-height:92vh;border-radius:10px;border:1px solid #1b2535';m.appendChild(i);document.body.appendChild(m);})('${s.level.image}')"/>` : ''}
+            <div class="teams">
+              <div class="team">
+                <h4>Team 1</h4>
+                ${(s.players||[]).filter(p=>!p.team_id || p.team_id===1).map(p => `${p.is_host? '★ ' : ''}${p.name || 'Player'}${p.score!=null? ' (score '+p.score+')' : ''}`).join('<br/>') || '<span class="muted">Open</span>'}
+              </div>
+              <div class="team">
+                <h4>Team 2</h4>
+                ${(s.players||[]).filter(p=>p.team_id===2).map(p => `${p.is_host? '★ ' : ''}${p.name || 'Player'}${p.score!=null? ' (score '+p.score+')' : ''}`).join('<br/>') || '<span class="muted">Computer</span>'}
+              </div>
             </div>
           `;
           card.onclick = async () => {

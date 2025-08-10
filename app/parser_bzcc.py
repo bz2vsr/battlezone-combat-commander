@@ -42,6 +42,7 @@ def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "gog_id": pid[1:] if isinstance(pid, str) and pid.startswith("G") else None,
                 "name": player_name,
                 "slot": p.get("t"),
+                "team_id": p.get("t"),
                 "stats": {
                     "kills": p.get("k"),
                     "deaths": p.get("d"),

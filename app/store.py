@@ -72,7 +72,7 @@ def save_sessions(normalized: List[Dict[str, Any]]) -> Dict[str, int]:
                         session_id=row.id,
                         player_id=None,
                         slot=slot,
-                        team_id=None,
+                        team_id=p.get("team_id"),
                         is_host=True if slot == 1 else None,
                         stats=payload_stats,
                     )
@@ -80,6 +80,7 @@ def save_sessions(normalized: List[Dict[str, Any]]) -> Dict[str, int]:
                 else:
                     existing.stats = payload_stats
                     existing.is_host = True if slot == 1 else None
+                    existing.team_id = p.get("team_id")
                 players_upserted += 1
 
             # Upsert level and mod records minimally
@@ -118,6 +119,7 @@ def get_current_sessions(max_age_seconds: int = 120) -> List[Dict[str, Any]]:
                     "is_host": sp.is_host,
                     "name": (sp.stats or {}).get("name"),
                     "score": (sp.stats or {}).get("score"),
+                    "team_id": sp.team_id,
                 })
             # Enriched level/mod if present
             level_name = None
