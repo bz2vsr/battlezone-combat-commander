@@ -18,7 +18,7 @@ def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
             nat_hex = nat
         source = raw.get("proxySource") or "Rebellion"
         session_id = f"{source}:{nat_hex}"
-        name = b64_to_str(raw.get("n", "")) or None
+        session_name = b64_to_str(raw.get("n", "")) or None
         tps = raw.get("tps") or raw.get("TPS")
         ver = raw.get("v") or raw.get("Version")
         map_file = raw.get("m") or raw.get("Map")
@@ -35,12 +35,12 @@ def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
             if p is None:
                 continue
             pid = p.get("i")
-            name = b64_to_str(p.get("n", "")) or None
+            player_name = b64_to_str(p.get("n", "")) or None
             player = {
                 "raw_id": pid,
                 "steam_id": pid[1:] if isinstance(pid, str) and pid.startswith("S") else None,
                 "gog_id": pid[1:] if isinstance(pid, str) and pid.startswith("G") else None,
-                "name": name,
+                "name": player_name,
                 "slot": p.get("t"),
                 "stats": {
                     "kills": p.get("k"),
@@ -90,7 +90,7 @@ def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
         sess = {
             "id": session_id,
             "source": source,
-            "name": name,
+            "name": session_name,
             "tps": tps,
             "version": ver,
             "player_count": cur_players,

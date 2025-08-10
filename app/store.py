@@ -54,6 +54,9 @@ def save_sessions(normalized: List[Dict[str, Any]]) -> Dict[str, int]:
                 row.map_file = s.get("map_file")
                 row.mod_id = s.get("mod")
                 row.last_seen_at = now
+                # If we marked this session as ended previously but we see it again, revive it
+                if row.ended_at is not None:
+                    row.ended_at = None
                 updated += 1
 
             # Upsert session_players by (session_id, slot) to avoid duplicates
