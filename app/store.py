@@ -61,7 +61,7 @@ def save_sessions(normalized: List[Dict[str, Any]]) -> Dict[str, int]:
                     slot=p.get("slot"),
                     team_id=None,
                     is_host=True if p.get("slot") == 1 else None,
-                    stats=p.get("stats"),
+                    stats={**(p.get("stats") or {}), **({"name": p.get("name")} if p.get("name") else {})},
                 )
                 db.add(sp)
                 players_upserted += 1
@@ -82,16 +82,26 @@ def get_current_sessions(max_age_seconds: int = 120) -> List[Dict[str, Any]]:
     with session_scope() as db:
         q = select(Session).where(Session.last_seen_at >= cutoff, Session.ended_at.is_(None)).order_by(Session.last_seen_at.desc())
         for row in db.scalars(q):
-            out.append(
-                {
-                    "id": row.id,
-                    "source": row.source,
-                    "name": row.name,
-                    "tps": row.tps,
-                    "version": row.version,
-                    "last_seen_at": (row.last_seen_at.isoformat() if row.last_seen_at else None),
-                }
-            )
+            players: List[Dict[str, Any]] = []
+            pq = select(SessionPlayer).where(SessionPlayer.session_id == row.id).order_by(SessionPlayer.slot)
+            for sp in db.scalars(pq):
+                players.append({
+                    "slot": sp.slot,
+                    "is_host": sp.is_host,
+                    "name": (sp.stats or {}).get("name"),
+                    "score": (sp.stats or {}).get("score"),
+                })
+            out.append({
+                "id": row.id,
+                "source": row.source,
+                "name": row.name,
+                "tps": row.tps,
+                "version": row.version,
+                "state": row.state,
+                "nat_type": row.nat_type,
+                "last_seen_at": (row.last_seen_at.isoformat() if row.last_seen_at else None),
+                "players": players,
+            })
     return out
 
 
