@@ -1,0 +1,10 @@
+# Exclude external reference materials from Render builds/deploys
+references/**
+MultiplayerSessionList/**
+
+# Optional: large local caches or artifacts (uncomment as needed)
+# .venv/**
+# node_modules/**
+# dist/**
+# build/**
+
