@@ -63,6 +63,27 @@ class SessionPlayer(Base):
         Index("ix_session_players_session", "session_id"),
     )
 
+
+class Mod(Base):
+    __tablename__ = "mods"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    name: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    image_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+
+
+class Level(Base):
+    __tablename__ = "levels"
+    __table_args__ = (
+        UniqueConstraint("mod_id", "map_file", name="uq_levels_mod_map"),
+    )
+
+    id: Mapped[str] = mapped_column(String(256), primary_key=True)  # f"{mod_id}:{map_file}"
+    mod_id: Mapped[str] = mapped_column(String(32), index=True)
+    map_file: Mapped[str] = mapped_column(String(128), index=True)
+    name: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    image_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     session_id: Mapped[str] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"), index=True)
     player_id: Mapped[Optional[int]] = mapped_column(ForeignKey("players.id", ondelete="SET NULL"), nullable=True)

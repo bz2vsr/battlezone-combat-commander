@@ -17,6 +17,38 @@ def ensure_alter_tables() -> None:
             ADD COLUMN IF NOT EXISTS state VARCHAR(32);
             """
         ))
+        # Create mods and levels tables if not present
+        conn.execute(text(
+            """
+            CREATE TABLE IF NOT EXISTS mods (
+              id VARCHAR(32) PRIMARY KEY,
+              name VARCHAR(256),
+              image_url VARCHAR(512)
+            );
+            """
+        ))
+        conn.execute(text(
+            """
+            CREATE TABLE IF NOT EXISTS levels (
+              id VARCHAR(256) PRIMARY KEY,
+              mod_id VARCHAR(32),
+              map_file VARCHAR(128),
+              name VARCHAR(256),
+              image_url VARCHAR(512)
+            );
+            """
+        ))
+        conn.execute(text(
+            """
+            DO $$ BEGIN
+              IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint WHERE conname = 'uq_levels_mod_map'
+              ) THEN
+                ALTER TABLE levels ADD CONSTRAINT uq_levels_mod_map UNIQUE (mod_id, map_file);
+              END IF;
+            END $$;
+            """
+        ))
         conn.execute(text(
             """
             ALTER TABLE IF EXISTS sessions

@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 from sqlalchemy import select
 
 from app.db import session_scope
-from app.models import Session, SessionPlayer
+from app.models import Session, SessionPlayer, Mod, Level
 
 
 GRACE_SECONDS = 120  # consider sessions stale if not seen for this long
@@ -23,6 +23,7 @@ def save_sessions(normalized: List[Dict[str, Any]]) -> Dict[str, int]:
     created = 0
     updated = 0
     players_upserted = 0
+    levels_upserted = 0
 
     with session_scope() as db:
         for s in normalized:
@@ -81,13 +82,25 @@ def save_sessions(normalized: List[Dict[str, Any]]) -> Dict[str, int]:
                     existing.is_host = True if slot == 1 else None
                 players_upserted += 1
 
+            # Upsert level and mod records minimally
+            mod_id = s.get("mod")
+            map_file = s.get("map_file")
+            if mod_id:
+                if db.get(Mod, mod_id) is None:
+                    db.add(Mod(id=mod_id))
+                if map_file:
+                    lid = f"{mod_id}:{map_file}"
+                    if db.get(Level, lid) is None:
+                        db.add(Level(id=lid, mod_id=mod_id, map_file=map_file))
+                        levels_upserted += 1
+
         # Optionally mark stale sessions as ended
         stale_cutoff = now - timedelta(seconds=GRACE_SECONDS)
         q = select(Session).where(Session.ended_at.is_(None), Session.last_seen_at < stale_cutoff)
         for stale in db.scalars(q):
             stale.ended_at = now
 
-    return {"created": created, "updated": updated, "players": players_upserted}
+    return {"created": created, "updated": updated, "players": players_upserted, "levels": levels_upserted}
 
 
 def get_current_sessions(max_age_seconds: int = 120) -> List[Dict[str, Any]]:
