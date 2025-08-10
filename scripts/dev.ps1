@@ -1,6 +1,4 @@
 #requires -Version 5.1
-Set-StrictMode -Version Latest
-$ErrorActionPreference = 'Stop'
 
 param(
   [ValidateSet('start','stop','status')]
@@ -9,6 +7,9 @@ param(
   [switch]$NoDocker,
   [switch]$Reinstall
 )
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 Set-Location $repoRoot
@@ -31,11 +32,7 @@ function Ensure-Venv {
 function Ensure-DBSchema {
   $py = Join-Path $repoRoot ".venv/Scripts/python.exe"
   Write-Info "Ensuring database schema"
-  & $py - << 'PY'
-from app.migrate import create_all, ensure_alter_tables
-create_all(); ensure_alter_tables()
-print('[schema] ready')
-PY
+  & $py -c "from app.migrate import create_all, ensure_alter_tables; create_all(); ensure_alter_tables(); print('[schema] ready')"
 }
 
 function Try-Start-Docker {
