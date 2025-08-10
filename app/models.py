@@ -63,6 +63,14 @@ class SessionPlayer(Base):
         Index("ix_session_players_session", "session_id"),
     )
 
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    session_id: Mapped[str] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"), index=True)
+    player_id: Mapped[Optional[int]] = mapped_column(ForeignKey("players.id", ondelete="SET NULL"), nullable=True)
+    slot: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    team_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    is_host: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    stats: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
 
 class Mod(Base):
     __tablename__ = "mods"
@@ -83,13 +91,5 @@ class Level(Base):
     map_file: Mapped[str] = mapped_column(String(128), index=True)
     name: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
     image_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    session_id: Mapped[str] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"), index=True)
-    player_id: Mapped[Optional[int]] = mapped_column(ForeignKey("players.id", ondelete="SET NULL"), nullable=True)
-    slot: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    team_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    is_host: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
-    stats: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
 
