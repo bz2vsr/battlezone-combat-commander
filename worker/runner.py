@@ -11,13 +11,12 @@ def main() -> int:
     interval = max(1, settings.poll_interval_seconds)
     print(f"[worker] starting placeholder loop with interval={interval}s", flush=True)
     try:
+        # Poll immediately on startup to prime the DB
         while True:
-            time.sleep(interval)
             try:
                 payload = fetch_raknet_payload()
                 if payload is not None:
                     normalized = normalize_bzcc_sessions(payload)
-                    # If any names are empty after sanitization, leave as None
                     for s in normalized:
                         if not s.get("name"):
                             s["name"] = None
@@ -25,6 +24,7 @@ def main() -> int:
                     print(f"[worker] upsert sessions: {stats}", flush=True)
             except Exception as ex:
                 print(f"[worker] poll error: {ex}", flush=True)
+            time.sleep(interval)
     except KeyboardInterrupt:
         return 0
 
