@@ -93,3 +93,30 @@ def get_current_sessions(max_age_seconds: int = 120) -> List[Dict[str, Any]]:
     return out
 
 
+def get_session_detail(session_id: str) -> Dict[str, Any] | None:
+    with session_scope() as db:
+        row = db.get(Session, session_id)
+        if row is None:
+            return None
+        players: List[Dict[str, Any]] = []
+        pq = select(SessionPlayer).where(SessionPlayer.session_id == session_id)
+        for sp in db.scalars(pq):
+            players.append(
+                {
+                    "slot": sp.slot,
+                    "team_id": sp.team_id,
+                    "is_host": sp.is_host,
+                    "stats": sp.stats,
+                }
+            )
+        return {
+            "id": row.id,
+            "source": row.source,
+            "name": row.name,
+            "tps": row.tps,
+            "version": row.version,
+            "last_seen_at": (row.last_seen_at.isoformat() if row.last_seen_at else None),
+            "players": players,
+        }
+
+

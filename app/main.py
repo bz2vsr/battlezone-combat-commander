@@ -1,5 +1,5 @@
 from flask import Flask, jsonify
-from app.store import get_current_sessions
+from app.store import get_current_sessions, get_session_detail
 from app.config import settings
 
 
@@ -15,6 +15,13 @@ def create_app() -> Flask:
     def sessions_current():
         sessions = get_current_sessions()
         return jsonify({"sessions": sessions})
+
+    @app.get("/api/v1/sessions/<path:sid>")
+    def session_detail(sid: str):
+        data = get_session_detail(sid)
+        if data is None:
+            return jsonify({"error": "not_found"}), 404
+        return jsonify(data)
 
     return app
 
