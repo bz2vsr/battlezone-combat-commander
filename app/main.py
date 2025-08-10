@@ -1,6 +1,5 @@
 from flask import Flask, jsonify
-from app.raknet import fetch_raknet_payload
-from app.parser_bzcc import normalize_bzcc_sessions
+from app.store import get_current_sessions
 from app.config import settings
 
 
@@ -14,14 +13,8 @@ def create_app() -> Flask:
 
     @app.get("/api/v1/sessions/current")
     def sessions_current():
-        try:
-            payload = fetch_raknet_payload()
-            if not payload:
-                return jsonify({"sessions": []})
-            sessions = normalize_bzcc_sessions(payload)
-            return jsonify({"sessions": sessions})
-        except Exception as ex:
-            return jsonify({"error": str(ex)}), 502
+        sessions = get_current_sessions()
+        return jsonify({"sessions": sessions})
 
     return app
 
