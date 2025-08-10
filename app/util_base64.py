@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import re
 
 _BASE64_STD = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 _BASE64_ALT = "@123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_"
@@ -56,5 +57,20 @@ def b64_to_ascii(s: str) -> str:
         return sanitize_ascii(decoded.decode("utf-8", errors="ignore"))
     except Exception:
         return sanitize_ascii(s)
+
+
+_TITLE_ALLOWED = re.compile(r"[^A-Za-z0-9 _:\-\'\(\)\[\]\.] +")
+
+
+def sanitize_session_title(title: str) -> str:
+    if not title:
+        return ""
+    # Remove control chars and limit to a safe visible subset
+    cleaned = sanitize_ascii(title)
+    # Collapse runs of punctuation/noise
+    cleaned = re.sub(r"[^A-Za-z0-9]+", lambda m: " " if any(ch.isalnum() for ch in m.group(0)) else " ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    # Truncate long tails of noise
+    return cleaned[:64]
 
 

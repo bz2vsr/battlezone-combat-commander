@@ -78,13 +78,13 @@ def save_sessions(normalized: List[Dict[str, Any]]) -> Dict[str, int]:
                         player_id=None,
                         slot=slot,
                         team_id=p.get("team_id"),
-                        is_host=True if slot == 1 else None,
+                        is_host=True if slot in (1, 6) else None,
                         stats=payload_stats,
                     )
                     db.add(sp)
                 else:
                     existing.stats = payload_stats
-                    existing.is_host = True if slot == 1 else None
+                    existing.is_host = True if slot in (1, 6) else None
                     existing.team_id = p.get("team_id")
                 players_upserted += 1
             # delete players whose slots disappeared
