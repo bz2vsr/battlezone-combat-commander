@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from sqlalchemy import select
 
@@ -166,6 +166,35 @@ def get_current_sessions(max_age_seconds: int = 120) -> List[Dict[str, Any]]:
                 "last_seen_at": (row.last_seen_at.isoformat() if row.last_seen_at else None),
                 "players": players,
             })
+    return out
+
+
+def get_history_summary(minutes: int = 60) -> List[Dict[str, Any]]:
+    """Return per-minute aggregates for the last N minutes.
+
+    For each minute bucket: number of distinct sessions observed and total players.
+    """
+    now = utcnow()
+    from datetime import timedelta
+    cutoff = now - timedelta(minutes=max(1, minutes))
+    points: Dict[str, Tuple[set, int]] = {}
+    with session_scope() as db:
+        q = select(SessionSnapshot).where(SessionSnapshot.observed_at >= cutoff).order_by(SessionSnapshot.observed_at)
+        for row in db.scalars(q):
+            bucket = row.observed_at.replace(second=0, microsecond=0).isoformat()
+            if bucket not in points:
+                points[bucket] = (set(), 0)
+            s, p = points[bucket]
+            if row.session_id:
+                s.add(row.session_id)
+            if isinstance(row.player_count, int):
+                p += row.player_count
+            points[bucket] = (s, p)
+    # Convert to sorted list
+    out: List[Dict[str, Any]] = []
+    for t in sorted(points.keys()):
+        s, p = points[t]
+        out.append({"t": t, "sessions": len(s), "players": p})
     return out
 
 
