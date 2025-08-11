@@ -93,3 +93,14 @@ class Level(Base):
     image_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
 
 
+class SessionSnapshot(Base):
+    __tablename__ = "session_snapshots"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    session_id: Mapped[str] = mapped_column(String(128), index=True)
+    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, index=True)
+    player_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    state: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    map_file: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    mod_id: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+

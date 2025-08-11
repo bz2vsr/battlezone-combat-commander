@@ -51,6 +51,20 @@ def ensure_alter_tables() -> None:
         ))
         conn.execute(text(
             """
+            CREATE TABLE IF NOT EXISTS session_snapshots (
+              id SERIAL PRIMARY KEY,
+              session_id VARCHAR(128),
+              observed_at TIMESTAMPTZ DEFAULT now(),
+              player_count INTEGER,
+              state VARCHAR(32),
+              map_file VARCHAR(128),
+              mod_id VARCHAR(32)
+            );
+            CREATE INDEX IF NOT EXISTS ix_session_snapshots_session_time ON session_snapshots(session_id, observed_at);
+            """
+        ))
+        conn.execute(text(
+            """
             ALTER TABLE IF EXISTS sessions
             ADD COLUMN IF NOT EXISTS nat_type VARCHAR(32);
             """

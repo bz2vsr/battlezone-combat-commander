@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 from sqlalchemy import select
 
 from app.db import session_scope
-from app.models import Session, SessionPlayer, Mod, Level
+from app.models import Session, SessionPlayer, Mod, Level, SessionSnapshot
 
 
 GRACE_SECONDS = 120  # consider sessions stale if not seen for this long
@@ -93,6 +93,17 @@ def save_sessions(normalized: List[Dict[str, Any]]) -> Dict[str, int]:
                     SessionPlayer.session_id == row.id,
                     ~SessionPlayer.slot.in_(current_slots),
                 ).delete(synchronize_session=False)
+
+            # Append a snapshot
+            snap = SessionSnapshot(
+                session_id=row.id,
+                observed_at=now,
+                player_count=len(current_slots),
+                state=row.state,
+                map_file=row.map_file,
+                mod_id=row.mod_id,
+            )
+            db.add(snap)
 
             # Upsert level and mod records minimally
             mod_id = s.get("mod")
