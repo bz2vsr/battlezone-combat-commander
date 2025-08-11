@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Tuple
 from sqlalchemy import select
 
 from app.db import session_scope
-from app.models import Session, SessionPlayer, Mod, Level, SessionSnapshot
+from app.models import Session, SessionPlayer, Mod, Level, SessionSnapshot, Identity, Player
 
 
 GRACE_SECONDS = 120  # consider sessions stale if not seen for this long
@@ -137,6 +137,7 @@ def get_current_sessions(max_age_seconds: int = 120) -> List[Dict[str, Any]]:
         for row in db.scalars(q):
             players: List[Dict[str, Any]] = []
             pq = select(SessionPlayer).where(SessionPlayer.session_id == row.id).order_by(SessionPlayer.slot)
+            steam_ids: List[str] = []
             for sp in db.scalars(pq):
                 info = {
                     "slot": sp.slot,
@@ -147,16 +148,30 @@ def get_current_sessions(max_age_seconds: int = 120) -> List[Dict[str, Any]]:
                 }
                 sid = (sp.stats or {}).get("steam_id")
                 if sid:
-                    from sqlalchemy import select as _select
-                    from app.models import Identity, Player
-                    ident = db.execute(_select(Identity).where(Identity.provider=="steam", Identity.external_id==str(sid))).scalar_one_or_none()
-                    if ident:
-                        info["steam"] = {"id": ident.external_id, "avatar": ident.profile_url and None, "profile": ident.profile_url}
-                        # store avatar on Player if available
-                        player = db.get(Player, ident.player_id) if ident.player_id else None
-                        if player:
-                            info["avatar"] = player.avatar_url
+                    info["steam_id"] = str(sid)
+                    steam_ids.append(str(sid))
                 players.append(info)
+
+            # Batch-enrich Steam identities for this session
+            if steam_ids:
+                from sqlalchemy import select as _select
+                mapping: Dict[str, Dict[str, Any]] = {}
+                rows = db.execute(
+                    _select(Identity, Player)
+                    .where(Identity.provider == "steam", Identity.external_id.in_(steam_ids))
+                    .join(Player, Identity.player_id == Player.id, isouter=True)
+                ).all()
+                for ident, player in rows:
+                    mapping[str(ident.external_id)] = {
+                        "id": str(ident.external_id),
+                        "profile": ident.profile_url,
+                        "nickname": (player.display_name if player else None),
+                        "avatar": (player.avatar_url if player else None),
+                    }
+                for p in players:
+                    sid = p.get("steam_id")
+                    if sid and sid in mapping:
+                        p["steam"] = mapping[sid]
             # Enriched level/mod if present
             level_name = None
             level_image = None
