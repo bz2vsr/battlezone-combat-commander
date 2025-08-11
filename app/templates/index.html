@@ -49,6 +49,15 @@
       <div class="right muted"><span id="connDot" class="dot"></span><span id="connText">Connecting…</span></div>
     </header>
     <div id="grid" class="grid"></div>
+    <div style="padding:0 16px 16px 16px;">
+      <div class="card" style="cursor:default">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <strong>Last 120 minutes</strong>
+          <span id="histSummary" class="muted"></span>
+        </div>
+        <canvas id="histCanvas" height="120" style="width:100%; margin-top:8px;"></canvas>
+      </div>
+    </div>
     <div id="modal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
       <div class="panel">
         <div class="row" style="justify-content:space-between">
@@ -72,12 +81,43 @@
       document.getElementById('mClose').onclick = () => { modal.style.display = 'none'; modal.setAttribute('aria-hidden','true'); };
       modal.addEventListener('click', (e)=>{ if(e.target===modal){ modal.style.display='none'; modal.setAttribute('aria-hidden','true'); }});
 
-      // Load a simple mini history chart (sessions vs time)
+      // Mini history chart (players vs sessions)
+      function drawHistory(points){
+        const c = document.getElementById('histCanvas');
+        if(!c) return;
+        const ctx = c.getContext('2d');
+        const W = c.width = c.clientWidth;
+        const H = c.height;
+        ctx.clearRect(0,0,W,H);
+        if(!points || points.length===0){ return; }
+        const sessions = points.map(p=>p.sessions||0);
+        const players = points.map(p=>p.players||0);
+        const maxY = Math.max(1, Math.max(...players), Math.max(...sessions));
+        const step = W / Math.max(1, points.length-1);
+        function plot(series, color){
+          ctx.beginPath();
+          series.forEach((v,i)=>{
+            const x = i*step;
+            const y = H - (v/maxY)*(H-16) - 8;
+            if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+          });
+          ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+        }
+        // grid lines
+        ctx.strokeStyle = '#1b2535'; ctx.lineWidth = 1;
+        for(let i=0;i<=4;i++){ const y=i*(H/4); ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+        plot(players, '#22c55e');
+        plot(sessions, '#3b82f6');
+        const last = points[points.length-1] || {sessions:0, players:0};
+        const lbl = document.getElementById('histSummary');
+        if(lbl) lbl.textContent = `${last.sessions||0} sessions • ${last.players||0} players`;
+      }
+
       async function loadHistory(){
         try {
           const res = await fetch('/api/v1/history/summary?minutes=120');
           const data = await res.json();
-          console.log('History (last 120m):', data.points);
+          drawHistory(data.points||[]);
         } catch {}
       }
 
