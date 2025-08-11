@@ -9,7 +9,10 @@
       header { padding: 12px 16px; background:#101621; border-bottom:1px solid #1b2535; display:flex; gap:12px; align-items:center; justify-content:space-between; }
       .left, .right { display:flex; gap:12px; align-items:center; }
       input, select { background:#0f1622; color:#e6e9ef; border:1px solid #243149; padding:6px 8px; border-radius:6px; }
-      .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:12px; padding:16px; }
+      .grid { display:grid; grid-template-columns: repeat(1, minmax(0, 1fr)); gap:12px; padding:16px; }
+      @media (min-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+      @media (min-width: 1200px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+      @media (min-width: 1500px) { .grid { grid-template-columns: repeat(4, 1fr); } }
       .card { border:1px solid #1b2535; background:#0f1622; padding:12px; border-radius:10px; box-shadow: 0 0 0 1px #0b111b inset; cursor:pointer; }
       .badge { font-size:12px; padding:2px 6px; border-radius:4px; border:1px solid #2a3953; }
       .muted { color:#a9b3c2; font-size:12px; }
@@ -96,17 +99,17 @@
           const isFFA = /(ffa|deathmatch|\bdm\b)/.test(title);
           const playersHtml = `
             <div class="players">
-              ${(s.players||[]).map(p => `${p.is_host? '★ ' : ''}${p.name || 'Player'}${p.score!=null? ' (score '+p.score+')' : ''}`).join('<br/>')}
+              ${(s.players||[]).map(p => `${(p.is_host || p.slot===1 || p.slot===6)? '★ ' : ''}${p.name || 'Player'}${p.score!=null? ' (score '+p.score+')' : ''}`).join('<br/>')}
             </div>`;
           const teamsHtml = `
             <div class="teams">
               <div class="team">
                 <h4>Team 1</h4>
-                ${(s.players||[]).filter(p=>!p.team_id || p.team_id===1).map(p => `${p.is_host? '★ ' : ''}${p.name || 'Player'}${p.score!=null? ' (score '+p.score+')' : ''}`).join('<br/>') || '<span class="muted">Open</span>'}
+                ${(s.players||[]).filter(p=>!p.team_id || p.team_id===1).map(p => `${(p.is_host || p.slot===1 || p.slot===6)? '★ ' : ''}${p.name || 'Player'}${p.score!=null? ' (score '+p.score+')' : ''}`).join('<br/>') || '<span class="muted">Open</span>'}
               </div>
               <div class="team">
                 <h4>Team 2</h4>
-                ${(s.players||[]).filter(p=>p.team_id===2).map(p => `${p.is_host? '★ ' : ''}${p.name || 'Player'}${p.score!=null? ' (score '+p.score+')' : ''}`).join('<br/>') || '<span class="muted">Open</span>'}
+                ${(s.players||[]).filter(p=>p.team_id===2).map(p => `${(p.is_host || p.slot===1 || p.slot===6)? '★ ' : ''}${p.name || 'Player'}${p.score!=null? ' (score '+p.score+')' : ''}`).join('<br/>') || '<span class="muted">Open</span>'}
               </div>
             </div>`;
 
