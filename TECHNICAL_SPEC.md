@@ -164,6 +164,11 @@ Note: If the database technology changes (e.g., to MySQL), we will update this s
 ### Admin/curation (secured)
 - `POST /admin/curation/maps` — propose/override map metadata/image
 - `POST /admin/assets` — upload/replace images
+- `GET /admin/tools/health` — consolidated status (RakNet fetch ok?, DB/Redis ok?, queue depth)
+- `GET /admin/tools/raknet/sample` — fetch and return the raw RakNet payload (redacted) for debugging
+- `GET /admin/db/snapshots` — paged listing for `session_snapshots` (filters: time window, session)
+- `GET /admin/sessions` — paged sessions with filters (state, map, mod, q)
+- `GET /admin/logs` — recent worker/app logs (tail, streaming)
 
 Versioning: prefix paths with `/api/v1/`; future breaking changes → `/api/v2/`.
 
@@ -321,6 +326,7 @@ Knobs to control cost:
 - M3: Seed ingest (`vsrmaplist.json`); map/mod resolution; asset mirroring; replace external URLs
 - M4: Snapshots + partitions; materialized views; first analytics pages
 - M5: GOG enrichment + SSO; curator dashboard for metadata/assets
+- M5.1: Admin utilities: health dashboard, RakNet tester, DB browser for sessions/snapshots, cache controls
 - M6: Hardening (retries/backoff, metrics, alerts); perf pass; preview deploys
 
 Success criteria per milestone will be tracked alongside issues/PRs.
