@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from app.util_base64 import decode_raknet_guid, b64_to_str, b64_to_ascii, sanitize_text, sanitize_session_title
+from app.util_base64 import decode_raknet_guid, b64_to_str, sanitize_text
 
 
 def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -18,9 +18,9 @@ def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
             nat_hex = nat
         source = raw.get("proxySource") or "Rebellion"
         session_id = f"{source}:{nat_hex}"
-        # Some servers set odd characters; prefer a strict ASCII-safe variant
-        session_name_raw = b64_to_str(raw.get("n", "")) or None
-        session_name = sanitize_session_title(b64_to_ascii(raw.get("n", "")) or session_name_raw)
+        # Decode session name from base64; preserve punctuation like '?'
+        _n = raw.get("n", "")
+        session_name = (b64_to_str(_n) or sanitize_text(_n) or None)
         tps = raw.get("tps") or raw.get("TPS")
         ver = raw.get("v") or raw.get("Version")
         map_file = raw.get("m") or raw.get("Map")
