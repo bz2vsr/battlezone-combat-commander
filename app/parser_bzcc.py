@@ -38,7 +38,7 @@ def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
                 continue
             pid = p.get("i")
             player_name_raw = b64_to_str(p.get("n", "")) or None
-            player_name = b64_to_ascii(p.get("n", "")) or player_name_raw
+            player_name = b64_to_str(p.get("n", "")) or player_name_raw
             slot_val = p.get("t")
             team_val = None
             if isinstance(slot_val, int):
