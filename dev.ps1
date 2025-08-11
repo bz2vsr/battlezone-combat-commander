@@ -66,8 +66,8 @@ Set-Location "$repoRoot"
   Write-Info "Jobs started:"
   Get-Job -Name bzcc-* | Select-Object Id, Name, State | Format-Table -AutoSize
   Write-Host ""
-  Write-Host "Open: http://127.0.0.1:$WebPort/" -ForegroundColor Green
-  Write-Host "API:  http://127.0.0.1:$WebPort/api/v1/sessions/current" -ForegroundColor Green
+  Write-Host "Open: http://localhost:$WebPort/" -ForegroundColor Green
+  Write-Host "API:  http://localhost:$WebPort/api/v1/sessions/current" -ForegroundColor Green
   Write-Host "Stop: .\dev.ps1 stop" -ForegroundColor Yellow
 }
 
