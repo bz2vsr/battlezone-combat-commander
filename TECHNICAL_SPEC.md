@@ -151,6 +151,7 @@ Note: If the database technology changes (e.g., to MySQL), we will update this s
 ### Public endpoints
 - `GET /api/v1/sessions/current` — live sessions with embedded refs (map/mod/player identity stubs)
 - `GET /api/v1/sessions/{id}` — full session detail
+- `GET /api/v1/history/summary?minutes=N` — per‑minute aggregates of sessions and players for the last N minutes (default 60)
 - `GET /api/v1/players/{player_id}` — identities, avatar, aggregates
 - `GET /api/v1/maps` and `/api/v1/maps/{id}` — metadata + image
 - `GET /api/v1/mods` and `/api/v1/mods/{id}` — metadata + image/dependencies
@@ -359,5 +360,25 @@ Success criteria per milestone will be tracked alongside issues/PRs.
 #### Changelog
 - 2025-08-10: Initial version
 - 2025-08-10: Added Preparation checklist; defined user/curator/admin capabilities; documented approved policies (no hotlinking, WS+SSE, 5s polling) and detailed backoff strategy; clarified SSO order and cost posture.
+- 2025-08-10: Implemented base web API + worker; added `/api/v1/sessions/current`, SSE stream, basic GameWatch UI; added `levels`/`mods` tables; created `session_snapshots` and history summary endpoint; enabled asset mirroring to local `/static/assets`; added Steam enrichment groundwork (GetPlayerSummaries) and API hydration for Steam identity; added Admin utilities plan (health/raknet/db tools).
+
+---
+
+## Implementation Status (current)
+
+- Completed
+  - Poller every 5s; normalized sessions/players; SSE stream
+  - `/api/v1/sessions/current`, `/api/v1/sessions/{id}`
+  - Map/mod enrichment (title + image) via getdata; local asset mirroring
+  - DB: `levels`, `mods`, `session_snapshots`; history summary endpoint
+  - UI: GameWatch grid, filters, team/FFA views; mini history chart
+  - Dev tooling: `dev.ps1`, localhost hints; living tech spec maintained
+
+- In progress
+  - Steam identity enrichment → display avatars/nicknames in UI
+  - Admin Tools pages (health, RakNet tester, DB browser)
+
+- Next
+  - WebSockets fanout; partitioning for snapshots; analytics pages
 
 
