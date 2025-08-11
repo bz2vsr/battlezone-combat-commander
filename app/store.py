@@ -72,6 +72,8 @@ def save_sessions(normalized: List[Dict[str, Any]]) -> Dict[str, int]:
                     select(SessionPlayer).where(SessionPlayer.session_id == row.id, SessionPlayer.slot == slot)
                 ).scalar_one_or_none()
                 payload_stats = {**(p.get("stats") or {}), **({"name": p.get("name")} if p.get("name") else {})}
+                if p.get("steam_id"):
+                    payload_stats["steam_id"] = p.get("steam_id")
                 if existing is None:
                     sp = SessionPlayer(
                         session_id=row.id,
@@ -136,13 +138,25 @@ def get_current_sessions(max_age_seconds: int = 120) -> List[Dict[str, Any]]:
             players: List[Dict[str, Any]] = []
             pq = select(SessionPlayer).where(SessionPlayer.session_id == row.id).order_by(SessionPlayer.slot)
             for sp in db.scalars(pq):
-                players.append({
+                info = {
                     "slot": sp.slot,
                     "is_host": sp.is_host,
                     "name": (sp.stats or {}).get("name"),
                     "score": (sp.stats or {}).get("score"),
                     "team_id": sp.team_id,
-                })
+                }
+                sid = (sp.stats or {}).get("steam_id")
+                if sid:
+                    from sqlalchemy import select as _select
+                    from app.models import Identity, Player
+                    ident = db.execute(_select(Identity).where(Identity.provider=="steam", Identity.external_id==str(sid))).scalar_one_or_none()
+                    if ident:
+                        info["steam"] = {"id": ident.external_id, "avatar": ident.profile_url and None, "profile": ident.profile_url}
+                        # store avatar on Player if available
+                        player = db.get(Player, ident.player_id) if ident.player_id else None
+                        if player:
+                            info["avatar"] = player.avatar_url
+                players.append(info)
             # Enriched level/mod if present
             level_name = None
             level_image = None
