@@ -37,6 +37,8 @@ def main() -> int:
                             if steam_ids:
                                 ste = enrich_steam_identities(steam_ids)
                                 print(f"[worker] enrich steam: {ste}", flush=True)
+                            else:
+                                print("[worker] enrich steam: no steam ids in this tick", flush=True)
                     except Exception as ex:
                         print(f"[worker] enrich error: {ex}", flush=True)
                     print(f"[worker] upsert sessions: {stats}", flush=True)

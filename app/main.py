@@ -22,6 +22,21 @@ def create_app() -> Flask:
     def healthz():
         return jsonify({"status": "ok"})
 
+    @app.get("/admin/tools/health")
+    def admin_health():
+        from app.raknet import fetch_raknet_payload
+        from app.config import settings as _settings
+        ok_raknet = False
+        try:
+            payload = fetch_raknet_payload()
+            ok_raknet = isinstance(payload, dict) and (payload.get("GET") is not None)
+        except Exception:
+            ok_raknet = False
+        return jsonify({
+            "raknet_ok": ok_raknet,
+            "steam_api_key_present": bool(_settings.steam_api_key),
+        })
+
     @app.get("/favicon.ico")
     def favicon():
         return ("", 204)

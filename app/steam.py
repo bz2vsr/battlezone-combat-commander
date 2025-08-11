@@ -29,7 +29,7 @@ def enrich_steam_identities(steam_ids: Iterable[str]) -> Dict[str, int]:
     """
     api_key = settings.steam_api_key
     if not api_key:
-        return {"updated": 0}
+        return {"updated": 0, "skipped": "no_api_key"}
     updated = 0
     ids = [sid for sid in (steam_ids or []) if sid]
     if not ids:
