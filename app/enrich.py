@@ -6,6 +6,7 @@ import requests
 from app.config import settings
 from app.db import session_scope
 from app.models import Level, Mod
+from app.assets import mirror_asset
 
 
 def _join_url(base: str, path: str) -> str:
@@ -61,7 +62,8 @@ def enrich_sessions_levels(sessions: Iterable[Dict]) -> Dict[str, int]:
             # Level details
             level_title = data.get("title") or None
             level_img_rel = data.get("image") or None
-            level_img = _join_url(asset_base, level_img_rel) if level_img_rel else None
+            level_img_src = _join_url(asset_base, level_img_rel) if level_img_rel else None
+            level_img = mirror_asset(level_img_src) if level_img_src else None
             level_id = f"{mod_id}:{map_file}"
             level = db.get(Level, level_id)
             if level is None:
@@ -83,7 +85,8 @@ def enrich_sessions_levels(sessions: Iterable[Dict]) -> Dict[str, int]:
                 m = db.get(Mod, mod_id)
                 mname = mod_info.get("name") or mod_info.get("workshop_name") or None
                 mimg_rel = mod_info.get("image") or None
-                mimg = _join_url(asset_base, mimg_rel) if mimg_rel else None
+                mimg_src = _join_url(asset_base, mimg_rel) if mimg_rel else None
+                mimg = mirror_asset(mimg_src) if mimg_src else None
                 if m is None:
                     db.add(Mod(id=mod_id, name=mname, image_url=mimg))
                     updated_mods += 1
