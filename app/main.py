@@ -103,6 +103,30 @@ def create_app() -> Flask:
     def index():
         return render_template("index.html")
 
+    # Simple Admin Tools (scaffold)
+    @app.get("/admin")
+    def admin_home():
+        return render_template("admin.html")
+
+    @app.get("/admin/tools/raknet/sample")
+    def admin_raknet_sample():
+        from app.raknet import fetch_raknet_payload
+        try:
+            payload = fetch_raknet_payload() or {}
+            # Redact player names/ids for safety
+            get_list = payload.get("GET") or []
+            redacted = []
+            for item in get_list:
+                if not isinstance(item, dict):
+                    continue
+                clone = dict(item)
+                if "pl" in clone:
+                    clone["pl"] = len(clone.get("pl") or [])
+                redacted.append({k: clone.get(k) for k in ["n", "v", "m", "g", "si", "tps", "mm", "pl"] if k in clone})
+            return jsonify({"ok": True, "GET": redacted, "count": len(redacted)})
+        except Exception as ex:
+            return jsonify({"ok": False, "error": str(ex)})
+
     return app
 
 
