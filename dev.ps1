@@ -1,7 +1,7 @@
 #requires -Version 5.1
 
 param(
-  [ValidateSet('start','stop','status')]
+  [ValidateSet('start','stop','status','restart')]
   [string]$Action = 'start',
   [int]$WebPort = 5000,
   [switch]$NoDocker,
@@ -95,6 +95,7 @@ switch ($Action) {
   'start' { Start-Services }
   'stop' { Stop-Services }
   'status' { Status-Services }
+  'restart' { Stop-Services; Start-Services }
 }
 
 
