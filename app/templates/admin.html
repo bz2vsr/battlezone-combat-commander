@@ -34,6 +34,13 @@
         </div>
         <pre id="rakOut">(click Fetch)</pre>
       </div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
+          <strong>Sessions by map (last 24h)</strong>
+          <button id="btnMaps">Refresh</button>
+        </div>
+        <pre id="mapsOut">(click Refresh)</pre>
+      </div>
     </main>
     <script>
       async function getJson(url){ const r = await fetch(url); return await r.json(); }
@@ -44,6 +51,10 @@
       document.getElementById('btnRak').onclick = async()=>{
         const j = await getJson('/admin/tools/raknet/sample');
         document.getElementById('rakOut').textContent = JSON.stringify(j, null, 2);
+      };
+      document.getElementById('btnMaps').onclick = async()=>{
+        const j = await getJson('/api/v1/history/maps?hours=24');
+        document.getElementById('mapsOut').textContent = JSON.stringify(j, null, 2);
       };
     </script>
   </body>

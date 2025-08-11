@@ -227,6 +227,29 @@ def get_history_summary(minutes: int = 60) -> List[Dict[str, Any]]:
     return out
 
 
+def get_maps_summary(hours: int = 24) -> List[Dict[str, Any]]:
+    """Top maps by distinct sessions and total player-count over the last N hours."""
+    from datetime import timedelta
+    now = utcnow()
+    cutoff = now - timedelta(hours=max(1, hours))
+    agg: Dict[str, Dict[str, Any]] = {}
+    with session_scope() as db:
+        q = select(SessionSnapshot).where(SessionSnapshot.observed_at >= cutoff)
+        for row in db.scalars(q):
+            key = row.map_file or "(unknown)"
+            bucket = agg.setdefault(key, {"map_file": key, "sessions": set(), "players": 0})
+            if row.session_id:
+                bucket["sessions"].add(row.session_id)
+            if isinstance(row.player_count, int):
+                bucket["players"] += row.player_count
+    # Convert sets to counts and sort
+    out = []
+    for v in agg.values():
+        out.append({"map_file": v["map_file"], "sessions": len(v["sessions"]), "players": v["players"]})
+    out.sort(key=lambda x: (x["sessions"], x["players"]), reverse=True)
+    return out[:25]
+
+
 def get_session_detail(session_id: str) -> Dict[str, Any] | None:
     with session_scope() as db:
         row = db.get(Session, session_id)
