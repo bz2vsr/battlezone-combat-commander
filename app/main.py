@@ -22,6 +22,10 @@ def create_app() -> Flask:
     def healthz():
         return jsonify({"status": "ok"})
 
+    @app.get("/favicon.ico")
+    def favicon():
+        return ("", 204)
+
     @app.get("/api/v1/sessions/current")
     def sessions_current():
         # Basic filter: ?state=InGame (case-insensitive)
