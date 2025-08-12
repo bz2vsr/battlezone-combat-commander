@@ -28,11 +28,11 @@
         </div>
 
         <!-- Main content area -->
-        <div class="grid grid-cols-1 xl:grid-cols-4 gap-4 p-4">
-          <main class="xl:col-span-3">
+        <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_260px] gap-4 p-4">
+          <main>
             {% block content %}{% endblock %}
           </main>
-          <aside>
+          <aside class="xl:w-[260px]">
             {% block sidebar_right %}{% endblock %}
           </aside>
         </div>
@@ -40,7 +40,7 @@
       <!-- Left drawer sidebar -->
       <div class="drawer-side z-40">
         <label for="left-drawer" class="drawer-overlay" aria-label="Close menu"></label>
-        <ul class="menu p-4 w-72 min-h-full bg-base-200 border-r border-base-300">
+        <ul class="menu p-4 w-60 min-h-full bg-base-200 border-r border-base-300">
           {% block sidebar_left %}
             {% include 'partials/nav_left.html' %}
           {% endblock %}

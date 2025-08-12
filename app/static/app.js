@@ -162,12 +162,12 @@
         return;
       }
       box.innerHTML = players.map(p => {
-        const avatar = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" alt="" style="width:16px;height:16px;border-radius:50%;vertical-align:-3px;margin-right:6px;"/>` : '';
+        const avatar = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" alt="" class="w-4 h-4 rounded-full mr-2 inline-block align-[-3px]"/>` : '';
         const name = p.steam && p.steam.nickname ? p.steam.nickname : (p.name || 'Player');
         const sid = p.steam && p.steam.id ? String(p.steam.id) : (p.steam_id ? String(p.steam_id) : null);
         const active = sid && siteMap.has(sid);
-        const dot = active ? '<span class="dot ok" style="margin-right:6px"></span>' : '<span class="dot" style="margin-right:6px"></span>';
-        return `<div>${dot}${avatar}${name}</div>`;
+        const dot = active ? '<span class="dot ok mr-2"></span>' : '<span class="dot mr-2"></span>';
+        return `<div class="flex items-center">${dot}${avatar}<span class="truncate">${name}</span></div>`;
       }).join('');
     } catch {
       box.innerHTML = '<span class="muted">Unavailable</span>';
