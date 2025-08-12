@@ -10,6 +10,9 @@
   const modal = document.getElementById('modal');
   const mTitle = document.getElementById('mTitle');
   const mBody = document.getElementById('mBody');
+  let firstDataReceived = false;
+  let isWarmup = true;
+  setTimeout(()=>{ isWarmup = false; }, 8000);
   document.getElementById('mClose').onclick = () => { modal.style.display = 'none'; modal.setAttribute('aria-hidden','true'); };
   modal.addEventListener('click', (e)=>{ if(e.target===modal){ modal.style.display='none'; modal.setAttribute('aria-hidden','true'); }});
 
@@ -66,7 +69,8 @@
       const empty = document.createElement('div');
       empty.className = 'empty';
       empty.setAttribute('aria-live', 'polite');
-      empty.innerHTML = `No sessions online right now.<br/><span class="muted">Waiting for live updates…</span>`;
+      const msg = isWarmup ? 'Loading sessions…' : 'No sessions online right now.';
+      empty.innerHTML = `${msg}<br/><span class="muted">Waiting for live updates…</span>`;
       grid.appendChild(empty);
       return;
     }
@@ -160,7 +164,9 @@
 
   async function fetchOnce() {
     const res = await fetch(url());
-    render(await res.json());
+    const data = await res.json();
+    if ((data.sessions||[]).length > 0) firstDataReceived = true;
+    render(data);
   }
 
   let sse;
@@ -171,6 +177,7 @@
       connDot.className = 'dot ok';
       connText.textContent = 'Live';
       const payload = JSON.parse(ev.data);
+      if ((payload.sessions||[]).length > 0) firstDataReceived = true;
       const req = new URL(url(), window.location);
       const state = req.searchParams.get('state');
       const min = +(req.searchParams.get('min_players')||0);
