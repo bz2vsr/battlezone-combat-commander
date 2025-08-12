@@ -133,6 +133,11 @@ Entity tables:
 - `assets` (hash, mime, bytes, width, height, source_url, stored_url, created_at)
 - `curation_queue` (id, kind ['map','mod','image'], key, status, note, created_at)
 
+Team Picker (planned):
+- `team_pick_sessions` (id, session_id, state ['open','final','canceled'], coin_winner_team, created_at, created_by_user_id, closed_at)
+- `team_pick_picks` (id, pick_session_id, order_index, team_id, player_steam_id, picked_by_user_id, picked_at)
+- `team_pick_participants` (pick_session_id, user_id, role ['commander1','commander2','viewer'])
+
 Time-series (monthly partitions):
 - `session_snapshots` (snapshot_ts, session_id, state, player_count, map_id, mod_ids, attrs jsonb)
 - `player_session_events` (player_id, session_id, joined_at, left_at, cumulative_seconds)
@@ -158,9 +163,27 @@ Note: If the database technology changes (e.g., to MySQL), we will update this s
 - `GET /api/v1/history/sessions` — time-window filter, paging
 - `GET /api/v1/history/players/{player_id}` — time-series (playtime, games)
 
+Presence (planned):
+- `GET /api/v1/presence/site` — list of users currently online on the site
+- `GET /api/v1/presence/in_game` — mapping of `session_id -> [players]` currently in verified sessions
+
+Team Picker (planned):
+- Read-only (public):
+  - `GET /api/v1/team_picker/{session_id}` — current pick session state and picks (visible to all users, including non‑logged‑in)
+- Commander actions (auth; user must be a verified commander in this session):
+  - `POST /api/v1/team_picker/{session_id}/start` — create or restart a pick session (invalidates prior picks)
+  - `POST /api/v1/team_picker/{session_id}/coin_toss` — cryptographically random coin toss to decide first pick
+  - `POST /api/v1/team_picker/{session_id}/pick` — body: { player_steam_id }
+  - `POST /api/v1/team_picker/{session_id}/finalize` — each commander may accept; when both accept, state = `final`
+  - `POST /api/v1/team_picker/{session_id}/cancel` — cancel an open pick session
+
 ### Realtime
 - `WS /realtime` rooms: `sessions`, `session:{id}`, `players:{id}`
 - SSE fallback: `GET /api/v1/stream/sessions`
+
+Team Picker (planned):
+- Room: `team_picker:{session_id}`
+- Events: `init`, `coin_toss`, `pick`, `finalize`, `cancel`
 
 ### Admin/curation (secured)
 - `POST /admin/curation/maps` — propose/override map metadata/image
@@ -183,6 +206,7 @@ Logged-in user capabilities (Steam SSO first; GOG later):
 - Favorites/watchlist: follow sessions/hosts/maps/mods; receive live updates in UI
 - Saved filters and dashboard presets
 - Propose metadata corrections (map names/descriptions) and upload candidate thumbnails (goes to curation queue)
+- Team Picker: commanders can start/operate picks; everyone (including non‑logged‑in) can view the read‑only Team Picker for any active session
 
 Curator capabilities (subset of admin powers, content-focused):
 - Review/approve/reject curation submissions
@@ -361,6 +385,7 @@ Success criteria per milestone will be tracked alongside issues/PRs.
 - 2025-08-10: Initial version
 - 2025-08-10: Added Preparation checklist; defined user/curator/admin capabilities; documented approved policies (no hotlinking, WS+SSE, 5s polling) and detailed backoff strategy; clarified SSO order and cost posture.
 - 2025-08-10: Implemented base web API + worker; added `/api/v1/sessions/current`, SSE stream, basic GameWatch UI; added `levels`/`mods` tables; created `session_snapshots` and history summary endpoint; enabled asset mirroring to local `/static/assets`; added Steam enrichment groundwork (GetPlayerSummaries) and API hydration for Steam identity; added Admin utilities plan (health/raknet/db tools).
+- 2025-08-12: Planned Presence endpoints and Team Picker feature (public read‑only view; commander‑only actions; finalize flow that does not modify main GameWatch UI; optional status indicator when in‑game team assignments match finalized roster). Added data model stubs and realtime rooms for Team Picker.
 
 ---
 
