@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% block title %}BZCC GameWatch{% endblock %}</title>
     <link rel="stylesheet" href="/static/css/app.tailwind.css" />
-    <link rel="stylesheet" href="/static/css/app.css" />
+    <link rel="stylesheet" href="/static/app.css" />
     {% block head_extra %}{% endblock %}
   </head>
   <body class="min-h-screen">
@@ -50,8 +50,10 @@
 
     <!-- Shared modal container -->
     {% include 'partials/modal.html' %}
+    {% include 'partials/legacy_modal_shim.html' %}
 
     {% block scripts %}{% endblock %}
+    <script src="/static/app.js"></script>
     <script src="/static/js/app.js"></script>
   </body>
   </html>
