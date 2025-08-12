@@ -47,25 +47,21 @@ function Start-Services {
   Ensure-DBSchema
 
   $py = Join-Path $repoRoot ".venv/Scripts/python.exe"
+  $tmpDir = Join-Path $repoRoot "tmp"
+  if (-not (Test-Path $tmpDir)) { New-Item -ItemType Directory -Path $tmpDir | Out-Null }
 
   Write-Info "Starting worker"
-  $scriptWorker = @"
-Set-Location "$repoRoot"
-& "$py" -m worker.runner
-"@
-  $workerJob = Start-Job -Name bzcc-worker -ScriptBlock { param($s) Invoke-Expression $s } -ArgumentList $scriptWorker
+  $worker = Start-Process -FilePath $py -ArgumentList @("-m","worker.runner") -WorkingDirectory $repoRoot -PassThru -WindowStyle Hidden
+  Set-Content -Path (Join-Path $tmpDir 'worker.pid') -Value $worker.Id
 
   Write-Info "Starting web (http://127.0.0.1:$WebPort/)"
-  $scriptWeb = @"
-Set-Location "$repoRoot"
-& "$py" -m flask --app app.main run --port $WebPort --debug
-"@
-  $webJob = Start-Job -Name bzcc-web -ScriptBlock { param($s) Invoke-Expression $s } -ArgumentList $scriptWeb
+  $web = Start-Process -FilePath $py -ArgumentList @("-m","flask","--app","app.main","run","--port","$WebPort") -WorkingDirectory $repoRoot -PassThru -WindowStyle Hidden
+  Set-Content -Path (Join-Path $tmpDir 'web.pid') -Value $web.Id
 
   Start-Sleep -Seconds 1
-  Write-Info "Jobs started:"
-  Get-Job -Name bzcc-* | Select-Object Id, Name, State | Format-Table -AutoSize
-  Write-Host ""
+  Write-Info "Processes started:"
+  Write-Host ("worker pid={0}  web pid={1}" -f $worker.Id, $web.Id)
+  Write-Host
   Write-Host "Open: http://localhost:$WebPort/" -ForegroundColor Green
   Write-Host "API:  http://localhost:$WebPort/api/v1/sessions/current" -ForegroundColor Green
   Write-Host "Stop: .\dev.ps1 stop" -ForegroundColor Yellow
@@ -73,22 +69,33 @@ Set-Location "$repoRoot"
 
 function Stop-Services {
   Write-Info "Stopping jobs"
-  $jobs = Get-Job -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'bzcc-*' }
-  if ($jobs) {
-    $jobs | ForEach-Object { try { Stop-Job -Id $_.Id -ErrorAction SilentlyContinue } catch {} }
-    $jobs | ForEach-Object { try { Remove-Job -Id $_.Id -Force -ErrorAction SilentlyContinue } catch {} }
+  $tmpDir = Join-Path $repoRoot "tmp"
+  $workerPidPath = Join-Path $tmpDir 'worker.pid'
+  $webPidPath = Join-Path $tmpDir 'web.pid'
+  if (Test-Path $workerPidPath) {
+    $pid = Get-Content $workerPidPath
+    try { Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue } catch {}
+    Remove-Item $workerPidPath -ErrorAction SilentlyContinue
+  }
+  if (Test-Path $webPidPath) {
+    $pid = Get-Content $webPidPath
+    try { Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue } catch {}
+    Remove-Item $webPidPath -ErrorAction SilentlyContinue
   }
   # Fallback: kill stray processes by command line match
-  $procs = Get-CimInstance Win32_Process | Where-Object {
-    ($_.CommandLine -match 'worker.runner') -or ($_.CommandLine -match 'flask --app app.main run')
-  }
-  foreach ($p in $procs) { try { Stop-Process -Id $p.ProcessId -Force } catch {} }
+  $procs = Get-CimInstance Win32_Process | Where-Object { ($_.CommandLine -match 'worker.runner') -or ($_.CommandLine -match 'flask --app app.main run') }
+  foreach ($p in $procs) { try { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue } catch {} }
   Write-Info "Services stopped"
 }
 
 function Status-Services {
   Write-Info "Job status"
-  Get-Job -Name bzcc-* -ErrorAction SilentlyContinue | Select-Object Id, Name, State | Format-Table -AutoSize
+  $tmpDir = Join-Path $repoRoot "tmp"
+  $workerPidPath = Join-Path $tmpDir 'worker.pid'
+  $webPidPath = Join-Path $tmpDir 'web.pid'
+  $workerPid = (Test-Path $workerPidPath) ? (Get-Content $workerPidPath) : $null
+  $webPid = (Test-Path $webPidPath) ? (Get-Content $webPidPath) : $null
+  Write-Host ("worker pid={0}  web pid={1}" -f $workerPid, $webPid)
 }
 
 switch ($Action) {
