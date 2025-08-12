@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, Response, stream_with_context, render_template
+from flask import Flask, jsonify, request, Response, stream_with_context, render_template, redirect, session
 import json
 import time
 from app.store import get_current_sessions, get_session_detail, get_history_summary, get_maps_summary, get_mods_summary
@@ -10,6 +10,7 @@ from app.config import settings
 def create_app() -> Flask:
     app = Flask(__name__)
     app.config['SECRET_KEY'] = settings.secret_key
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
     # Ensure DB schema exists (idempotent)
     try:
@@ -147,6 +148,66 @@ def create_app() -> Flask:
     @app.get("/")
     def index():
         return render_template("index.html")
+
+    # --- Steam SSO (OpenID 2.0) ---
+    from app.auth import build_steam_login_redirect_url, verify_steam_openid_response
+
+    @app.get("/auth/steam/login")
+    def auth_steam_login():
+        return redirect(build_steam_login_redirect_url())
+
+    @app.get("/auth/steam/return")
+    def auth_steam_return():
+        steamid = verify_steam_openid_response(request)
+        if not steamid:
+            return redirect("/")
+        # Upsert identity in DB
+        from app.db import session_scope
+        from app.models import Identity, Player
+        from sqlalchemy import select
+        with session_scope() as db:
+            ident = db.execute(select(Identity).where(Identity.provider == "steam", Identity.external_id == str(steamid))).scalar_one_or_none()
+            if ident is None:
+                player = Player()
+                db.add(player)
+                db.flush()
+                ident = Identity(player_id=player.id, provider="steam", external_id=str(steamid), profile_url=f"https://steamcommunity.com/profiles/{steamid}/")
+                db.add(ident)
+        session['uid'] = f"steam:{steamid}"
+        return redirect("/")
+
+    @app.post("/auth/logout")
+    def auth_logout():
+        session.clear()
+        return jsonify({"ok": True})
+
+    @app.get("/api/v1/me")
+    def me():
+        uid = session.get('uid')
+        if not uid:
+            return jsonify({"user": None})
+        provider, external_id = uid.split(":", 1)
+        from app.db import session_scope
+        from app.models import Identity, Player
+        from sqlalchemy import select
+        with session_scope() as db:
+            row = db.execute(
+                select(Identity, Player)
+                .where(Identity.provider == provider, Identity.external_id == external_id)
+                .join(Player, Identity.player_id == Player.id, isouter=True)
+            ).first()
+            if not row:
+                return jsonify({"user": None})
+            ident, player = row
+            return jsonify({
+                "user": {
+                    "provider": provider,
+                    "id": ident.external_id,
+                    "profile": ident.profile_url,
+                    "display_name": player.display_name if player else None,
+                    "avatar": player.avatar_url if player else None,
+                }
+            })
 
     # Simple Admin Tools (scaffold)
     @app.get("/admin")
