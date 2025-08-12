@@ -265,6 +265,7 @@
       const me = document.getElementById('me');
       const btn = document.getElementById('signin');
       const out = document.getElementById('signout');
+      const prof = document.getElementById('profileLink');
       if (user) {
         if (btn) btn.style.display = 'none';
         if (me) {
@@ -273,12 +274,14 @@
           me.innerHTML = `You: <a href="${user.profile}" target="_blank" rel="noopener">${name}</a>`;
         }
         if (out) out.style.display = '';
+        if (prof) { prof.style.display = ''; prof.href = user.profile || '#'; }
         // immediate heartbeat when detected
         fetch('/api/v1/presence/heartbeat', {method:'POST'}).catch(()=>{});
       } else {
         if (btn) btn.style.display = '';
         if (me) me.style.display = 'none';
         if (out) out.style.display = 'none';
+        if (prof) { prof.style.display = 'none'; prof.removeAttribute('href'); }
       }
     } catch {}
   })();
