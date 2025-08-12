@@ -149,6 +149,27 @@
     });
   }
 
+  async function renderOnlineSidebar() {
+    const box = document.getElementById('onlineList');
+    if (!box) return;
+    try {
+      const res = await fetch('/api/v1/players/online');
+      const data = await res.json();
+      const players = data.players || [];
+      if (players.length === 0) {
+        box.innerHTML = '<span class="muted">No players detected</span>';
+        return;
+      }
+      box.innerHTML = players.map(p => {
+        const avatar = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" alt="" style="width:16px;height:16px;border-radius:50%;vertical-align:-3px;margin-right:6px;"/>` : '';
+        const name = p.steam && p.steam.nickname ? p.steam.nickname : (p.name || 'Player');
+        return `<div>${avatar}${name}</div>`;
+      }).join('');
+    } catch {
+      box.innerHTML = '<span class="muted">Unavailable</span>';
+    }
+  }
+
   function url() {
     const p = new URLSearchParams();
     if (fState.value) p.set('state', fState.value);
@@ -190,6 +211,7 @@
         return (s.players||[]).some(p => (p.name||'').toLowerCase().includes(q));
       });
       render({sessions});
+      renderOnlineSidebar();
     };
     sse.onerror = ()=>{ connDot.className = 'dot err'; connText.textContent = 'Reconnecting…'; sse && sse.close(); setTimeout(startSSE, 5000); };
   }
@@ -202,6 +224,7 @@
   fetchOnce();
   startSSE();
   loadHistory();
+  renderOnlineSidebar();
 
   (async function loadMods(){
     try {

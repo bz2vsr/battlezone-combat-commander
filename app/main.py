@@ -114,6 +114,36 @@ def create_app() -> Flask:
     def mods_catalog():
         return jsonify({"mods": get_mod_catalog()})
 
+    @app.get("/api/v1/players/online")
+    def players_online():
+        # Derive unique players across active sessions for sidebar presence
+        sessions = get_current_sessions()
+        seen = {}
+        for s in sessions:
+            for p in s.get("players") or []:
+                key = None
+                steam = (p.get("steam") or {})
+                if steam.get("id"):
+                    key = f"steam:{steam['id']}"
+                elif p.get("name"):
+                    key = f"name:{p['name']}"
+                else:
+                    continue
+                if key not in seen:
+                    seen[key] = {
+                        "name": steam.get("nickname") or p.get("name") or "Player",
+                        "steam": {
+                            "id": steam.get("id"),
+                            "nickname": steam.get("nickname"),
+                            "avatar": steam.get("avatar"),
+                            "url": steam.get("url"),
+                        },
+                        "in_game": True,
+                    }
+        players = list(seen.values())
+        players.sort(key=lambda x: (x.get("steam", {}).get("nickname") or x.get("name") or "").lower())
+        return jsonify({"players": players})
+
     @app.get("/")
     def index():
         return render_template("index.html")
