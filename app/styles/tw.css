@@ -4,4 +4,9 @@
 
 /* DaisyUI theme tokens are configured in tailwind.config.js */
 
+@layer components {
+  /* Soft badge variant using DaisyUI's ghost style */
+  .badge-soft { @apply badge badge-ghost; }
+}
+
 

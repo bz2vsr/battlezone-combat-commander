@@ -13,6 +13,9 @@ module.exports = {
           border: '#1b2535',
           accent: '#6b5cff'
         }
+      },
+      borderRadius: {
+        badge: '4px'
       }
     }
   },

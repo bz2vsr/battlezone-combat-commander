@@ -90,8 +90,8 @@
           }).join('<br/>')}
         </div>`;
       const teamsHtml = `
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
-          <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2 items-stretch">
+          <div class="card bg-base-100 border border-base-300 h-full"><div class="card-body p-3 h-full">
             <h4 class="text-sm opacity-70 mb-1">Team 1</h4>
             ${(s.players||[]).filter(p=>!p.team_id || p.team_id===1).map(p => {
               const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
@@ -100,8 +100,9 @@
               const score = (p.score!=null? ' (score '+p.score+')' : '');
               return `${star}${avatar}${nick}${score}`;
             }).join('<br/>') || '<span class="opacity-70 text-xs">Open</span>'}
+            <div class="grow"></div>
           </div></div>
-          <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">
+          <div class="card bg-base-100 border border-base-300 h-full"><div class="card-body p-3 h-full">
             <h4 class="text-sm opacity-70 mb-1">Team 2</h4>
             ${(s.players||[]).filter(p=>p.team_id===2).map(p => {
               const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
@@ -110,18 +111,19 @@
               const score = (p.score!=null? ' (score '+p.score+')' : '');
               return `${star}${avatar}${nick}${score}`;
             }).join('<br/>') || '<span class="opacity-70 text-xs">Open</span>'}
+            <div class="grow"></div>
           </div></div>
         </div>`;
 
       const a = s.attributes || {};
       card.innerHTML = `
         <div class="flex flex-wrap gap-2 items-center">
-          <span class="badge badge-outline badge-sm">${s.state || 'Unknown'}</span>
-          ${s.nat_type ? `<span class=\"badge badge-outline badge-sm\">${s.nat_type}</span>` : ''}
-          ${a.worst_ping!=null ? `<span class=\"badge badge-outline badge-sm\" title=\"Worst ping seen\">Worst ${a.worst_ping}ms</span>` : ''}
-          ${a.game_mode ? `<span class=\"badge badge-outline badge-sm\" title=\"Game mode\">${a.game_mode}</span>` : ''}
-          ${a.time_limit!=null ? `<span class=\"badge badge-outline badge-sm\" title=\"Time limit\">TL ${a.time_limit}m</span>` : ''}
-          ${a.kill_limit!=null ? `<span class=\"badge badge-outline badge-sm\" title=\"Kill limit\">KL ${a.kill_limit}</span>` : ''}
+          <span class="badge-soft badge-sm rounded-[theme(borderRadius.badge)] ${((s.state||'')==='InGame') ? 'badge-accent' : 'badge-outline'}">${s.state || 'Unknown'}</span>
+          ${s.nat_type ? `<span class=\"badge-soft badge-sm rounded-[theme(borderRadius.badge)]\">${s.nat_type}</span>` : ''}
+          ${a.worst_ping!=null ? `<span class=\"badge-soft badge-sm rounded-[theme(borderRadius.badge)]\" title=\"Worst ping seen\">Worst ${a.worst_ping}ms</span>` : ''}
+          ${a.game_mode ? `<span class=\"badge-soft badge-sm rounded-[theme(borderRadius.badge)]\" title=\"Game mode\">${a.game_mode}</span>` : ''}
+          ${a.time_limit!=null ? `<span class=\"badge-soft badge-sm rounded-[theme(borderRadius.badge)]\" title=\"Time limit\">TL ${a.time_limit}m</span>` : ''}
+          ${a.kill_limit!=null ? `<span class=\"badge-soft badge-sm rounded-[theme(borderRadius.badge)]\" title=\"Kill limit\">KL ${a.kill_limit}</span>` : ''}
           <span class="ml-auto text-xs opacity-70">${(s.players||[]).length}${(s.attributes && s.attributes.max_players)? '/'+s.attributes.max_players : ''} players</span>
         </div>
         <h3 class="mt-1 text-lg">${(s.name || s.id)}</h3>
