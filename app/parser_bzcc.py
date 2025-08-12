@@ -101,6 +101,21 @@ def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
             # Use provided text, normalized to Title Case
             nat_type = nat_type_raw.replace("_", " ").strip().title() or None
 
+        # Additional attributes: ping/time rules
+        attributes = {}
+        max_ping = raw.get("pgm") or raw.get("MaxPing")
+        if isinstance(max_ping, (int, str)) and str(max_ping).isdigit():
+            attributes["max_ping"] = int(max_ping)
+        worst_ping = raw.get("pg") or raw.get("MaxPingSeen")
+        if isinstance(worst_ping, (int, str)) and str(worst_ping).isdigit():
+            attributes["worst_ping"] = int(worst_ping)
+        time_limit = raw.get("ti") or raw.get("TimeLimit")
+        if isinstance(time_limit, (int, str)) and str(time_limit).isdigit():
+            attributes["time_limit"] = int(time_limit)
+        kill_limit = raw.get("ki") or raw.get("KillLimit")
+        if isinstance(kill_limit, (int, str)) and str(kill_limit).isdigit():
+            attributes["kill_limit"] = int(kill_limit)
+
         sess = {
             "id": session_id,
             "source": source,
@@ -115,6 +130,7 @@ def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
             "map_file": map_file,
             "mod": mod,
             "mods": mods,
+            "attributes": attributes or None,
         }
         sessions.append(sess)
     return sessions
