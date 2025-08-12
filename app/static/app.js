@@ -264,6 +264,7 @@
       const user = data && data.user;
       const me = document.getElementById('me');
       const btn = document.getElementById('signin');
+      const out = document.getElementById('signout');
       if (user) {
         if (btn) btn.style.display = 'none';
         if (me) {
@@ -271,12 +272,22 @@
           const name = (user.display_name && String(user.display_name).trim()) || user.id;
           me.innerHTML = `You: <a href="${user.profile}" target="_blank" rel="noopener">${name}</a>`;
         }
+        if (out) out.style.display = '';
         // immediate heartbeat when detected
         fetch('/api/v1/presence/heartbeat', {method:'POST'}).catch(()=>{});
       } else {
         if (btn) btn.style.display = '';
         if (me) me.style.display = 'none';
+        if (out) out.style.display = 'none';
       }
     } catch {}
   })();
+
+  const outBtn = document.getElementById('signout');
+  if (outBtn) {
+    outBtn.addEventListener('click', async () => {
+      try { await fetch('/auth/logout', {method:'POST'}); } catch {}
+      location.href = '/';
+    });
+  }
 })();
