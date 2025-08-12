@@ -48,7 +48,15 @@ def _decode_base64_clean(raw: str) -> bytes:
 
 
 def b64_to_str(s: str) -> str:
-    return sanitize_text(_decode_base64_clean(s).decode("utf-8", errors="ignore"))
+    data = _decode_base64_clean(s)
+    if not data:
+        return ""
+    # Many RakNet fields are fixed-size, NUL-terminated C strings.
+    # Cut at the first NUL to avoid trailing buffer garbage becoming punctuation.
+    nul_index = data.find(b"\x00")
+    if nul_index != -1:
+        data = data[:nul_index]
+    return sanitize_text(data.decode("utf-8", errors="ignore")).strip()
 
 
 def sanitize_ascii(text: str) -> str:

@@ -21,7 +21,11 @@ def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
         # Decode session name from base64; preserve punctuation like '?'
         _n = raw.get("n", "")
         # Only use base64-decoded text; if decode fails, leave None (avoid leaking raw base64)
-        session_name = (b64_to_str(_n) or None)
+        # Trim decoded title and collapse internal runs of whitespace
+        title = b64_to_str(_n)
+        if title:
+            title = " ".join(title.split())
+        session_name = title or None
         tps = raw.get("tps") or raw.get("TPS")
         ver = raw.get("v") or raw.get("Version")
         map_file = raw.get("m") or raw.get("Map")
