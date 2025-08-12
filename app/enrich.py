@@ -50,12 +50,14 @@ def enrich_sessions_levels(sessions: Iterable[Dict]) -> Dict[str, int]:
             map_file = s.get("map_file")
             if not mod_id or not map_file:
                 continue
-            key = (mod_id, map_file)
+            # Use lowercase map id for getdata parity with reference implementation
+            map_file_query = map_file.lower()
+            key = (mod_id, map_file_query)
             if key in seen:
                 continue
             seen.add(key)
 
-            data = fetch_getdata(map_file, mod_id)
+            data = fetch_getdata(map_file_query, mod_id)
             if not data:
                 continue
 

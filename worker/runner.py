@@ -6,6 +6,7 @@ from app.parser_bzcc import normalize_bzcc_sessions
 from app.store import save_sessions
 from app.steam import enrich_steam_identities
 from app.enrich import enrich_sessions_levels
+from app.assets import ensure_placeholder_asset
 
 
 def main() -> int:
@@ -13,6 +14,7 @@ def main() -> int:
     interval = max(1, settings.poll_interval_seconds)
     print(f"[worker] starting placeholder loop with interval={interval}s", flush=True)
     try:
+        ensure_placeholder_asset()
         # Poll immediately on startup to prime the DB
         while True:
             try:

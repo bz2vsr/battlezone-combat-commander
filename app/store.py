@@ -181,6 +181,8 @@ def get_current_sessions(max_age_seconds: int = 120) -> List[Dict[str, Any]]:
                 if lvl:
                     level_name = lvl.name
                     level_image = lvl.image_url
+            # Fallback placeholder asset if level image missing
+            placeholder_img = "/static/assets/placeholder-map.png"
             out.append({
                 "id": row.id,
                 "source": row.source,
@@ -191,7 +193,7 @@ def get_current_sessions(max_age_seconds: int = 120) -> List[Dict[str, Any]]:
                 "nat_type": row.nat_type,
                 "map_file": row.map_file,
                 "mod": row.mod_id,
-                "level": {"name": level_name, "image": level_image} if (level_name or level_image) else None,
+                "level": {"name": level_name or (row.map_file or "(unknown)"), "image": level_image or placeholder_img} if (row.map_file or level_name or level_image) else None,
                 "last_seen_at": (row.last_seen_at.isoformat() if row.last_seen_at else None),
                 "players": players,
             })

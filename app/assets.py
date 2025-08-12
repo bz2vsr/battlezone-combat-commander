@@ -4,6 +4,7 @@ import hashlib
 import mimetypes
 import os
 from typing import Optional
+from pathlib import Path
 
 import requests
 
@@ -59,4 +60,28 @@ def mirror_asset(url: str, timeout: float = 10.0) -> Optional[str]:
     except Exception:
         return None
 
+
+PLACEHOLDER_NAME = "placeholder-map.png"
+
+
+def ensure_placeholder_asset() -> None:
+    """Copy a root-level placeholder image to static/assets once, if present.
+
+    Looks for placeholder at repo root or assets/placeholder-map.png.
+    """
+    try:
+        dst_dir = ASSETS_DIR
+        os.makedirs(dst_dir, exist_ok=True)
+        dst_path = os.path.join(dst_dir, PLACEHOLDER_NAME)
+        if os.path.exists(dst_path):
+            return
+        root = Path(__file__).resolve().parents[2]
+        candidates = [root / PLACEHOLDER_NAME, root / "assets" / PLACEHOLDER_NAME]
+        for src in candidates:
+            if src.exists():
+                with open(dst_path, "wb") as f:
+                    f.write(src.read_bytes())
+                break
+    except Exception:
+        pass
 
