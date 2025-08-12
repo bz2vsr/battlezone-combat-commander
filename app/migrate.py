@@ -117,6 +117,13 @@ def ensure_alter_tables() -> None:
             );
             CREATE INDEX IF NOT EXISTS ix_site_presence_provider_external ON site_presence(provider, external_id);
             CREATE INDEX IF NOT EXISTS ix_site_presence_last_seen ON site_presence(last_seen_at);
+            DO $$ BEGIN
+              IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint WHERE conname = 'uq_site_presence_provider_external'
+              ) THEN
+                ALTER TABLE site_presence ADD CONSTRAINT uq_site_presence_provider_external UNIQUE (provider, external_id);
+              END IF;
+            END $$;
             """
         ))
 

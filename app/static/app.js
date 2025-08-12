@@ -234,10 +234,10 @@
   // history chart removed from main page for now
   renderOnlineSidebar();
 
-  // Heartbeat every 30s for logged-in users
+  // Heartbeat every 15s for logged-in users
   setInterval(()=>{
     fetch('/api/v1/presence/heartbeat', {method:'POST'}).catch(()=>{});
-  }, 30000);
+  }, 15000);
 
   (async function loadMods(){
     try {
@@ -268,9 +268,11 @@
         if (btn) btn.style.display = 'none';
         if (me) {
           me.style.display = '';
-          const name = user.display_name || user.id;
+          const name = (user.display_name && user.display_name.trim()) || user.id;
           me.innerHTML = `You: <a href="${user.profile}" target="_blank" rel="noopener">${name}</a>`;
         }
+        // immediate heartbeat when detected
+        fetch('/api/v1/presence/heartbeat', {method:'POST'}).catch(()=>{});
       } else {
         if (btn) btn.style.display = '';
         if (me) me.style.display = 'none';
