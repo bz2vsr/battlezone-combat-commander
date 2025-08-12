@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request, Response, stream_with_context, render_template
 import json
 import time
-from app.store import get_current_sessions, get_session_detail, get_history_summary, get_maps_summary
+from app.store import get_current_sessions, get_session_detail, get_history_summary, get_maps_summary, get_mods_summary
 from app.migrate import create_all, ensure_alter_tables
 from app.config import settings
 
@@ -103,6 +103,11 @@ def create_app() -> Flask:
     def history_maps():
         hours = request.args.get("hours", default=24, type=int)
         return jsonify({"items": get_maps_summary(hours=hours)})
+
+    @app.get("/api/v1/history/mods")
+    def history_mods():
+        hours = request.args.get("hours", default=24, type=int)
+        return jsonify({"items": get_mods_summary(hours=hours)})
 
     @app.get("/")
     def index():
