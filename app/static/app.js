@@ -223,7 +223,7 @@
   fMod.addEventListener('change', fetchOnce);
   fetchOnce();
   startSSE();
-  loadHistory();
+  // history chart removed from main page for now
   renderOnlineSidebar();
 
   (async function loadMods(){
