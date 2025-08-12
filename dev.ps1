@@ -93,8 +93,10 @@ function Status-Services {
   $tmpDir = Join-Path $repoRoot "tmp"
   $workerPidPath = Join-Path $tmpDir 'worker.pid'
   $webPidPath = Join-Path $tmpDir 'web.pid'
-  $workerPid = (Test-Path $workerPidPath) ? (Get-Content $workerPidPath) : $null
-  $webPid = (Test-Path $webPidPath) ? (Get-Content $webPidPath) : $null
+  $workerPid = $null
+  if (Test-Path $workerPidPath) { $workerPid = Get-Content $workerPidPath }
+  $webPid = $null
+  if (Test-Path $webPidPath) { $webPid = Get-Content $webPidPath }
   Write-Host ("worker pid={0}  web pid={1}" -f $workerPid, $webPid)
 }
 
