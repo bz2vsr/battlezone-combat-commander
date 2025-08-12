@@ -289,8 +289,38 @@
   const outBtn = document.getElementById('signout');
   if (outBtn) {
     outBtn.addEventListener('click', async () => {
+      const ok = await showConfirm('Are you sure you want to sign out?');
+      if (!ok) return;
       try { await fetch('/auth/logout', {method:'POST'}); } catch {}
       location.href = '/';
+    });
+  }
+
+  function showConfirm(message){
+    return new Promise(resolve => {
+      const oldClose = document.getElementById('mClose');
+      const onCancel = () => { cleanup(false); };
+      const cleanup = (result) => {
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden','true');
+        oldClose.removeEventListener('click', onCancel);
+        modal.removeEventListener('click', onBackdrop);
+        resolve(result);
+      };
+      const onBackdrop = (e)=>{ if(e.target===modal) cleanup(false); };
+      oldClose.addEventListener('click', onCancel, { once: true });
+      modal.addEventListener('click', onBackdrop, { once: true });
+      mTitle.textContent = 'Confirm';
+      mBody.innerHTML = `
+        <div>${message}</div>
+        <div class="row" style="justify-content:flex-end;margin-top:12px">
+          <button id="confirmNo" style="background:#0f1622;color:#e6e9ef;border:1px solid #243149;padding:6px 10px;border-radius:6px;margin-right:8px">Cancel</button>
+          <button id="confirmYes" style="background:#18263a;color:#e6e9ef;border:1px solid #2a3953;padding:6px 10px;border-radius:6px">Sign out</button>
+        </div>`;
+      modal.style.display = 'flex';
+      modal.setAttribute('aria-hidden','false');
+      document.getElementById('confirmNo').onclick = () => cleanup(false);
+      document.getElementById('confirmYes').onclick = () => cleanup(true);
     });
   }
 })();
