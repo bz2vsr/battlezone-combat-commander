@@ -268,7 +268,7 @@
         if (btn) btn.style.display = 'none';
         if (me) {
           me.style.display = '';
-          const name = (user.display_name && user.display_name.trim()) || user.id;
+          const name = (user.display_name && String(user.display_name).trim()) || user.id;
           me.innerHTML = `You: <a href="${user.profile}" target="_blank" rel="noopener">${name}</a>`;
         }
         // immediate heartbeat when detected

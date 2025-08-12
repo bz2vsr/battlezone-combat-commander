@@ -217,6 +217,19 @@ def create_app() -> Flask:
             if not row:
                 return jsonify({"user": None})
             ident, player = row
+            # Fallback: if no display_name, best-effort fetch from Steam now
+            if provider == "steam" and player and not player.display_name:
+                try:
+                    from app.steam import fetch_player_summaries
+                    res = fetch_player_summaries([external_id]) or {}
+                    players = (res.get("response") or {}).get("players") or []
+                    if players:
+                        p = players[0]
+                        player.display_name = p.get("personaname") or player.display_name
+                        player.avatar_url = p.get("avatarfull") or player.avatar_url
+                        db.flush()
+                except Exception:
+                    pass
             return jsonify({
                 "user": {
                     "provider": provider,
@@ -225,6 +238,23 @@ def create_app() -> Flask:
                     "display_name": player.display_name if player else None,
                     "avatar": player.avatar_url if player else None,
                 }
+            })
+
+    @app.get("/admin/tools/presence/peek")
+    def admin_presence_peek():
+        from app.db import session_scope
+        from app.models import SitePresence
+        from sqlalchemy import select as _select
+        with session_scope() as db:
+            rows = db.execute(_select(SitePresence).order_by(SitePresence.last_seen_at.desc()).limit(10)).scalars().all()
+            return jsonify({
+                "rows": [
+                    {
+                        "provider": r.provider,
+                        "external_id": r.external_id,
+                        "last_seen_at": r.last_seen_at.isoformat() if r.last_seen_at else None,
+                    } for r in rows
+                ]
             })
 
     @app.post("/api/v1/presence/heartbeat")
