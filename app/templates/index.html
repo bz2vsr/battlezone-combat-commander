@@ -46,6 +46,11 @@
         <label>Min Players <input id="fMin" type="number" min="0" value="0" style="width:64px" /></label>
         <label>Search <input id="fQ" placeholder="session/player" /></label>
         <label><input id="fVsr" type="checkbox" /> VSR only</label>
+        <label>Mod
+          <select id="fMod">
+            <option value="">All</option>
+          </select>
+        </label>
       </div>
       <div class="right muted"><span id="connDot" class="dot"></span><span id="connText">Connecting…</span></div>
     </header>
@@ -76,6 +81,7 @@
       const connDot = document.getElementById('connDot');
       const connText = document.getElementById('connText');
       const fVsr = document.getElementById('fVsr');
+      const fMod = document.getElementById('fMod');
       const modal = document.getElementById('modal');
       const mTitle = document.getElementById('mTitle');
       const mBody = document.getElementById('mBody');
@@ -194,7 +200,9 @@
             </div>
             <h3>${(s.name || s.id)}</h3>
             <div class="muted">${s.id}</div>
-            <div class="muted">${s.level && s.level.name ? ('Map: ' + s.level.name) : (s.map_file? ('Map: ' + s.map_file) : '')} ${s.mod_name ? ('• Mod: ' + s.mod_name) : (s.mod ? ('• Mod: ' + s.mod) : '')}</div>
+            <div class="muted">${s.level && s.level.name ? ('Map: ' + s.level.name) : (s.map_file? ('Map: ' + s.map_file) : '')}
+              ${s.mod_details && (s.mod_details.name || s.mod) ? (' • Mod: ' + (s.mod_details.url ? (`<a href="${s.mod_details.url}" target="_blank" rel="noopener">${s.mod_details.name || s.mod}</a>`) : (s.mod_details.name || s.mod))) : ''}
+            </div>
             ${s.level && s.level.image ? `<img alt="map" class="map-thumb" src="${s.level.image}" onclick="event.stopPropagation(); (function(src){const m=document.createElement('div');m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:9999';m.onclick=()=>document.body.removeChild(m);const i=document.createElement('img');i.src=src;i.style.cssText='max-width:92vw;max-height:92vh;border-radius:10px;border:1px solid #1b2535';m.appendChild(i);document.body.appendChild(m);})('${s.level.image}')"/>` : ''}
             ${isFFA ? playersHtml : teamsHtml}
           `;
@@ -217,7 +225,11 @@
         if (fState.value) p.set('state', fState.value);
         if (fMin.value && +fMin.value>0) p.set('min_players', fMin.value);
         if (fQ.value) p.set('q', fQ.value);
-        if (fVsr.checked) p.set('mod', '1325933293');
+        if (fMod.value) {
+          p.set('mod', fMod.value);
+        } else if (fVsr.checked) {
+          p.set('mod', '1325933293');
+        }
         return `/api/v1/sessions/current?${p.toString()}`;
       }
 
@@ -255,9 +267,28 @@
       fMin.addEventListener('change', fetchOnce);
       fQ.addEventListener('input', fetchOnce);
       fVsr.addEventListener('change', fetchOnce);
+      fMod.addEventListener('change', fetchOnce);
       fetchOnce();
       startSSE();
       loadHistory();
+
+      // Load mod catalog for dropdown
+      (async function loadMods(){
+        try {
+          const res = await fetch('/api/v1/mods');
+          const data = await res.json();
+          const mods = data.mods || {};
+          const entries = Object.entries(mods)
+            .map(([id, m]) => ({ id, name: (m && m.name) || id }))
+            .filter(x => x.id && x.id !== '0')
+            .sort((a,b)=> (a.name||'').localeCompare(b.name||''));
+          entries.forEach(({id, name})=>{
+            const opt = document.createElement('option');
+            opt.value = id; opt.textContent = name;
+            fMod.appendChild(opt);
+          });
+        } catch {}
+      })();
     </script>
   </body>
   </html>
