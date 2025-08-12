@@ -182,7 +182,7 @@ def get_current_sessions(max_age_seconds: int = 120) -> List[Dict[str, Any]]:
                     level_name = lvl.name
                     level_image = lvl.image_url
             # Fallback placeholder asset if level image missing
-            placeholder_img = "/static/assets/placeholder-map.png"
+            placeholder_img = "/static/assets/placeholder-thumbnail-200x200.svg"
             out.append({
                 "id": row.id,
                 "source": row.source,

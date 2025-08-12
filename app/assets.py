@@ -61,13 +61,13 @@ def mirror_asset(url: str, timeout: float = 10.0) -> Optional[str]:
         return None
 
 
-PLACEHOLDER_NAME = "placeholder-map.png"
+PLACEHOLDER_NAME = "placeholder-thumbnail-200x200.svg"
 
 
 def ensure_placeholder_asset() -> None:
-    """Copy a root-level placeholder image to static/assets once, if present.
+    """Move a root-level placeholder image to static/assets once, if present.
 
-    Looks for placeholder at repo root or assets/placeholder-map.png.
+    Looks for placeholder at repo root or assets/placeholder-thumbnail-200x200.svg.
     """
     try:
         dst_dir = ASSETS_DIR
@@ -79,8 +79,17 @@ def ensure_placeholder_asset() -> None:
         candidates = [root / PLACEHOLDER_NAME, root / "assets" / PLACEHOLDER_NAME]
         for src in candidates:
             if src.exists():
-                with open(dst_path, "wb") as f:
-                    f.write(src.read_bytes())
+                # Prefer move to avoid duplicates at repo root
+                try:
+                    src.replace(dst_path)
+                except Exception:
+                    # Fallback to copy if cross-device move fails
+                    with open(dst_path, "wb") as f:
+                        f.write(src.read_bytes())
+                    try:
+                        src.unlink(missing_ok=True)
+                    except Exception:
+                        pass
                 break
     except Exception:
         pass
