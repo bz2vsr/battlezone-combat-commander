@@ -149,6 +149,10 @@ def create_app() -> Flask:
     def index():
         return render_template("index.html")
 
+    @app.get("/privacy")
+    def privacy():
+        return render_template("privacy.html")
+
     # --- Steam SSO (OpenID 2.0) ---
     from app.auth import build_steam_login_redirect_url, verify_steam_openid_response
 

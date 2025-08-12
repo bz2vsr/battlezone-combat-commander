@@ -242,4 +242,26 @@
       });
     } catch {}
   })();
+
+  // Load current user and toggle sign-in UI
+  (async function loadMe(){
+    try {
+      const res = await fetch('/api/v1/me');
+      const data = await res.json();
+      const user = data && data.user;
+      const me = document.getElementById('me');
+      const btn = document.getElementById('signin');
+      if (user) {
+        if (btn) btn.style.display = 'none';
+        if (me) {
+          me.style.display = '';
+          const name = user.display_name || user.id;
+          me.innerHTML = `You: <a href="${user.profile}" target="_blank" rel="noopener">${name}</a>`;
+        }
+      } else {
+        if (btn) btn.style.display = '';
+        if (me) me.style.display = 'none';
+      }
+    } catch {}
+  })();
 })();

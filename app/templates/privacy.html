@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy Policy • BZCC GameWatch</title>
+    <link rel="stylesheet" href="/static/app.css" />
+  </head>
+  <body id="gw-app" data-theme="dark" style="padding:16px">
+    <header style="padding:0 0 12px 0; border-bottom:1px solid #1b2535; margin-bottom:16px">
+      <strong>BZCC GameWatch</strong>
+      <span class="muted" style="margin-left:8px">Privacy Policy</span>
+    </header>
+
+    <main class="card" style="max-width:900px; margin:0 auto">
+      <h3 style="margin-top:0">Privacy Policy</h3>
+      <p class="muted">Last updated: <span id="ppDate">today</span></p>
+      <p>
+        We use Steam Sign-In so you never create a password with us. Steam handles authentication; we receive a
+        signed confirmation of your Steam account and store only a minimal public identifier.
+      </p>
+      <h4>What we store</h4>
+      <ul>
+        <li>SteamID64</li>
+        <li>Public profile link, optional display name, optional avatar URL</li>
+        <li>A session cookie for your login session</li>
+      </ul>
+      <h4>What we do not store</h4>
+      <ul>
+        <li>No passwords, email addresses, payment info, or private Steam data</li>
+        <li>No third‑party trackers or behavioral ads</li>
+      </ul>
+      <h4>Game data</h4>
+      <p>
+        Game session data comes from the public RakNet lobby server and is not private. If you sign in, we may
+        link your Steam ID to sessions to show avatars/nicknames. This is optional and reversible.
+      </p>
+      <h4>Your choices</h4>
+      <ul>
+        <li>Sign out anytime</li>
+        <li>Request unlink/deletion of your identity record</li>
+      </ul>
+      <p class="muted">Questions? Contact the site operator.</p>
+      <p><a href="/" class="muted">Return to GameWatch</a></p>
+    </main>
+    <script>
+      document.getElementById('ppDate').textContent = new Date().toISOString().slice(0,10);
+    </script>
+  </body>
+  </html>
+
+
