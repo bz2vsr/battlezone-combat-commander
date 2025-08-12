@@ -230,10 +230,10 @@
   // history chart removed from main page for now
   renderOnlineSidebar();
 
-  // Heartbeat every 15s for logged-in users
+  // Heartbeat every 8s for logged-in users for faster presence
   setInterval(()=>{
     fetch('/api/v1/presence/heartbeat', {method:'POST'}).catch(()=>{});
-  }, 15000);
+  }, 8000);
 
   (async function loadMods(){
     try {

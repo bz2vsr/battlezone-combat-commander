@@ -304,9 +304,9 @@ def create_app() -> Flask:
 
     @app.get("/api/v1/players/site-online")
     def players_site_online():
-        # list users with recent heartbeats (last 60s)
+        # list users with recent heartbeats (last 20s) for snappier presence
         from datetime import timedelta, datetime
-        cutoff = datetime.utcnow() - timedelta(seconds=60)
+        cutoff = datetime.utcnow() - timedelta(seconds=20)
         from app.db import session_scope
         from app.models import SitePresence, Identity, Player
         from sqlalchemy import select as _select
