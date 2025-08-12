@@ -177,6 +177,20 @@ def create_app() -> Flask:
                 db.flush()
                 ident = Identity(player_id=player.id, provider="steam", external_id=str(steamid), profile_url=f"https://steamcommunity.com/profiles/{steamid}/")
                 db.add(ident)
+            # Best-effort profile sync for display name and avatar
+            try:
+                from app.steam import fetch_player_summaries
+                res = fetch_player_summaries([str(steamid)]) or {}
+                players = (res.get("response") or {}).get("players") or []
+                if players:
+                    p = players[0]
+                    # Reload player instance (may be existing)
+                    player = db.get(Player, ident.player_id)
+                    if player:
+                        player.display_name = p.get("personaname") or player.display_name
+                        player.avatar_url = p.get("avatarfull") or player.avatar_url
+            except Exception:
+                pass
         session['uid'] = f"steam:{steamid}"
         return redirect("/")
 
