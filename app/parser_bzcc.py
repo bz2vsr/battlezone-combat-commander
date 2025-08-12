@@ -20,7 +20,8 @@ def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
         session_id = f"{source}:{nat_hex}"
         # Decode session name from base64; preserve punctuation like '?'
         _n = raw.get("n", "")
-        session_name = (b64_to_str(_n) or sanitize_text(_n) or None)
+        # Only use base64-decoded text; if decode fails, leave None (avoid leaking raw base64)
+        session_name = (b64_to_str(_n) or None)
         tps = raw.get("tps") or raw.get("TPS")
         ver = raw.get("v") or raw.get("Version")
         map_file = raw.get("m") or raw.get("Map")
@@ -38,7 +39,7 @@ def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
                 continue
             pid = p.get("i")
             player_name_raw = b64_to_str(p.get("n", "")) or None
-            player_name = b64_to_str(p.get("n", "")) or player_name_raw
+            player_name = player_name_raw
             slot_val = p.get("t")
             team_val = None
             if isinstance(slot_val, int):
@@ -80,23 +81,21 @@ def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
         # NAT type mapping
         nat_type_raw = raw.get("NAT_TYPE") or raw.get("NATType")
         nat_type = None
-        if isinstance(nat_type_raw, str):
-            code = nat_type_raw
-        elif isinstance(nat_type_raw, int):
+        if isinstance(nat_type_raw, int) or (isinstance(nat_type_raw, str) and nat_type_raw.isdigit()):
             code = str(nat_type_raw)
-        else:
-            code = None
-        if code is not None:
             nat_type = {
-                "0": "NONE",
-                "1": "FULL CONE",
-                "2": "ADDRESS RESTRICTED",
-                "3": "PORT RESTRICTED",
-                "4": "SYMMETRIC",
-                "5": "UNKNOWN",
-                "6": "DETECTION IN PROGRESS",
-                "7": "SUPPORTS UPNP",
-            }.get(code, f"[{code}]")
+                "0": "None",
+                "1": "Full Cone",
+                "2": "Address Restricted",
+                "3": "Port Restricted",
+                "4": "Symmetric",
+                "5": "Unknown",
+                "6": "Detection In Progress",
+                "7": "Supports UPNP",
+            }.get(code, None)
+        elif isinstance(nat_type_raw, str):
+            # Use provided text, normalized to Title Case
+            nat_type = nat_type_raw.replace("_", " ").strip().title() or None
 
         sess = {
             "id": session_id,
