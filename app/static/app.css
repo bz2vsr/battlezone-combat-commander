@@ -1,0 +1,24 @@
+body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#0b0f14; color:#e6e9ef; margin:0; }
+header { padding: 12px 16px; background:#101621; border-bottom:1px solid #1b2535; display:flex; gap:12px; align-items:center; justify-content:space-between; }
+.left, .right { display:flex; gap:12px; align-items:center; }
+input, select { background:#0f1622; color:#e6e9ef; border:1px solid #243149; padding:6px 8px; border-radius:6px; }
+.grid { display:grid; grid-template-columns: repeat(1, minmax(0, 1fr)); gap:12px; padding:16px; }
+@media (min-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1200px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1500px) { .grid { grid-template-columns: repeat(4, 1fr); } }
+.card { border:1px solid #1b2535; background:#0f1622; padding:12px; border-radius:10px; box-shadow: 0 0 0 1px #0b111b inset; cursor:pointer; }
+.badge { font-size:12px; padding:2px 6px; border-radius:4px; border:1px solid #2a3953; }
+.muted { color:#a9b3c2; font-size:12px; }
+h3 { margin:6px 0 8px; font-size:16px; }
+.players { margin-top:8px; font-size:13px; line-height:1.6; }
+.teams { display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:8px; }
+.team { border:1px solid #1b2535; border-radius:8px; padding:8px; background:#0b111b; }
+.team h4 { margin:0 0 6px; font-size:13px; color:#a9b3c2; font-weight:600; }
+.row { display:flex; gap:8px; align-items:center; flex-wrap: wrap; }
+.empty { grid-column: 1 / -1; text-align:center; color:#a9b3c2; padding:40px 16px; border:1px dashed #2a3953; border-radius:10px; background:#0f1622; }
+.dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; background:#586173; }
+.dot.ok { background:#22c55e; }
+.dot.err { background:#ef4444; }
+.modal { position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; }
+.map-thumb { width:200px; height:200px; object-fit:cover; border-radius:8px; border:1px solid #1b2535; cursor:zoom-in; display:block; margin-top:8px; }
+.modal .panel { width:min(720px, 94vw); max-height:90vh; overflow:auto; background:#0f1622; border:1px solid #1b2535; border-radius:10px; padding:16px; }
