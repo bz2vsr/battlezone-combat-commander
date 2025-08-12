@@ -274,14 +274,20 @@
           me.innerHTML = `You: <a href="${user.profile}" target="_blank" rel="noopener">${name}</a>`;
         }
         if (out) out.style.display = '';
-        if (prof) { prof.style.display = ''; prof.href = user.profile || '#'; }
+        if (prof) {
+          prof.style.display = '';
+          prof.onclick = async (e) => {
+            e.preventDefault();
+            await showProfileModal();
+          };
+        }
         // immediate heartbeat when detected
         fetch('/api/v1/presence/heartbeat', {method:'POST'}).catch(()=>{});
       } else {
         if (btn) btn.style.display = '';
         if (me) me.style.display = 'none';
         if (out) out.style.display = 'none';
-        if (prof) { prof.style.display = 'none'; prof.removeAttribute('href'); }
+        if (prof) { prof.style.display = 'none'; prof.onclick = null; }
       }
     } catch {}
   })();
@@ -322,5 +328,29 @@
       document.getElementById('confirmNo').onclick = () => cleanup(false);
       document.getElementById('confirmYes').onclick = () => cleanup(true);
     });
+  }
+
+  async function showProfileModal(){
+    try {
+      const res = await fetch('/api/v1/me');
+      const data = await res.json();
+      const user = data && data.user;
+      if (!user) return;
+      const avatar = user.avatar ? `<img src="${user.avatar}" alt="" style="width:64px;height:64px;border-radius:50%;border:1px solid #243149;margin-right:12px"/>` : '';
+      mTitle.textContent = 'Your account';
+      mBody.innerHTML = `
+        <div class="row" style="align-items:center">
+          ${avatar}
+          <div>
+            <div><strong>${(user.display_name && String(user.display_name).trim()) || user.id}</strong></div>
+            <div class="muted">Provider: ${user.provider || 'steam'}</div>
+            <div class="muted">ID: ${user.id}</div>
+            <div><a href="${user.profile}" target="_blank" rel="noopener">Open Steam profile</a></div>
+          </div>
+        </div>
+      `;
+      modal.style.display = 'flex';
+      modal.setAttribute('aria-hidden','false');
+    } catch {}
   }
 })();
