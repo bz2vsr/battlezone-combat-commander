@@ -227,6 +227,59 @@ def create_app() -> Flask:
                 }
             })
 
+    @app.post("/api/v1/presence/heartbeat")
+    def presence_heartbeat():
+        # mark the logged-in user as active on the site (green dot)
+        uid = session.get('uid')
+        if not uid:
+            return jsonify({"ok": False, "error": "not_authenticated"}), 401
+        provider, external_id = uid.split(":", 1)
+        from app.db import session_scope
+        from app.models import SitePresence
+        from sqlalchemy import text as _text
+        with session_scope() as db:
+            # upsert via SQL for simplicity
+            db.execute(_text(
+                """
+                INSERT INTO site_presence(provider, external_id, last_seen_at)
+                VALUES (:p, :e, now())
+                ON CONFLICT DO NOTHING;
+                """
+            ), {"p": provider, "e": external_id})
+            db.execute(_text(
+                """
+                UPDATE site_presence SET last_seen_at = now()
+                WHERE provider = :p AND external_id = :e
+                """
+            ), {"p": provider, "e": external_id})
+        return jsonify({"ok": True})
+
+    @app.get("/api/v1/players/site-online")
+    def players_site_online():
+        # list users with recent heartbeats (last 60s)
+        from datetime import timedelta, datetime
+        cutoff = datetime.utcnow() - timedelta(seconds=60)
+        from app.db import session_scope
+        from app.models import SitePresence, Identity, Player
+        from sqlalchemy import select as _select
+        with session_scope() as db:
+            rows = db.execute(
+                _select(SitePresence, Identity, Player)
+                .where(SitePresence.last_seen_at >= cutoff)
+                .join(Identity, (Identity.provider == SitePresence.provider) & (Identity.external_id == SitePresence.external_id), isouter=True)
+                .join(Player, Identity.player_id == Player.id, isouter=True)
+            ).all()
+            out = []
+            for pr, ident, player in rows:
+                out.append({
+                    "provider": pr.provider,
+                    "id": pr.external_id,
+                    "display_name": player.display_name if player else None,
+                    "avatar": player.avatar_url if player else None,
+                    "profile": ident.profile_url if ident else None,
+                })
+            return jsonify({"players": out})
+
     # Simple Admin Tools (scaffold)
     @app.get("/admin")
     def admin_home():

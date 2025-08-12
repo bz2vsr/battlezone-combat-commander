@@ -153,9 +153,14 @@
     const box = document.getElementById('onlineList');
     if (!box) return;
     try {
-      const res = await fetch('/api/v1/players/online');
-      const data = await res.json();
-      const players = data.players || [];
+      const [ingRes, siteRes] = await Promise.all([
+        fetch('/api/v1/players/online'),
+        fetch('/api/v1/players/site-online').catch(()=>null)
+      ]);
+      const ing = ingRes ? await ingRes.json() : {players: []};
+      const site = siteRes ? await siteRes.json() : {players: []};
+      const players = ing.players || [];
+      const siteMap = new Map((site.players||[]).map(p => [String(p.id), p]));
       if (players.length === 0) {
         box.innerHTML = '<span class="muted">No players detected</span>';
         return;
@@ -163,7 +168,10 @@
       box.innerHTML = players.map(p => {
         const avatar = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" alt="" style="width:16px;height:16px;border-radius:50%;vertical-align:-3px;margin-right:6px;"/>` : '';
         const name = p.steam && p.steam.nickname ? p.steam.nickname : (p.name || 'Player');
-        return `<div>${avatar}${name}</div>`;
+        const sid = p.steam && p.steam.id ? String(p.steam.id) : (p.steam_id ? String(p.steam_id) : null);
+        const active = sid && siteMap.has(sid);
+        const dot = active ? '<span class="dot ok" style="margin-right:6px"></span>' : '<span class="dot" style="margin-right:6px"></span>';
+        return `<div>${dot}${avatar}${name}</div>`;
       }).join('');
     } catch {
       box.innerHTML = '<span class="muted">Unavailable</span>';
@@ -225,6 +233,11 @@
   startSSE();
   // history chart removed from main page for now
   renderOnlineSidebar();
+
+  // Heartbeat every 30s for logged-in users
+  setInterval(()=>{
+    fetch('/api/v1/presence/heartbeat', {method:'POST'}).catch(()=>{});
+  }, 30000);
 
   (async function loadMods(){
     try {

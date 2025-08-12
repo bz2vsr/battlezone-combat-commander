@@ -106,6 +106,19 @@ def ensure_alter_tables() -> None:
             END $$;
             """
         ))
+        # Presence table for logged-in site users (Steam)
+        conn.execute(text(
+            """
+            CREATE TABLE IF NOT EXISTS site_presence (
+              id SERIAL PRIMARY KEY,
+              provider VARCHAR(16),
+              external_id VARCHAR(64),
+              last_seen_at TIMESTAMPTZ DEFAULT now()
+            );
+            CREATE INDEX IF NOT EXISTS ix_site_presence_provider_external ON site_presence(provider, external_id);
+            CREATE INDEX IF NOT EXISTS ix_site_presence_last_seen ON site_presence(last_seen_at);
+            """
+        ))
 
 
 if __name__ == "__main__":

@@ -104,3 +104,12 @@ class SessionSnapshot(Base):
     map_file: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     mod_id: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
 
+
+class SitePresence(Base):
+    __tablename__ = "site_presence"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    provider: Mapped[str] = mapped_column(String(16), index=True)
+    external_id: Mapped[str] = mapped_column(String(64), index=True)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, index=True)
+
