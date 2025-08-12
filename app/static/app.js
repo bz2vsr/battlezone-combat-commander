@@ -224,7 +224,6 @@
   fState.addEventListener('change', fetchOnce);
   fMin.addEventListener('change', fetchOnce);
   fQ.addEventListener('input', fetchOnce);
-  fVsr.addEventListener('change', fetchOnce);
   fMod.addEventListener('change', fetchOnce);
   fetchOnce();
   startSSE();
