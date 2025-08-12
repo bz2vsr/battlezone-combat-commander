@@ -82,8 +82,8 @@ def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
             elif server_info_mode == 5:
                 state = "PostGame"
 
-        # NAT type mapping
-        nat_type_raw = raw.get("NAT_TYPE") or raw.get("NATType")
+        # NAT type mapping (RakNet field is 't' in payload; C# maps from string digit)
+        nat_type_raw = raw.get("t") or raw.get("NAT_TYPE") or raw.get("NATType")
         nat_type = None
         if isinstance(nat_type_raw, int) or (isinstance(nat_type_raw, str) and nat_type_raw.isdigit()):
             code = str(nat_type_raw)

@@ -56,7 +56,12 @@ def b64_to_str(s: str) -> str:
     nul_index = data.find(b"\x00")
     if nul_index != -1:
         data = data[:nul_index]
-    return sanitize_text(data.decode("utf-8", errors="ignore")).strip()
+    # Decode like the C# ref: Encoding(1252).GetString(...)
+    try:
+        text = data.decode("cp1252", errors="ignore")
+    except Exception:
+        text = data.decode("utf-8", errors="ignore")
+    return sanitize_text(text).strip()
 
 
 def sanitize_ascii(text: str) -> str:
