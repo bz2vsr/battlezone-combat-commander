@@ -66,70 +66,68 @@
     const sessions = data.sessions || [];
     if (sessions.length === 0) {
       const empty = document.createElement('div');
-      empty.className = 'empty';
+      empty.className = 'col-span-full';
       empty.setAttribute('aria-live', 'polite');
       const msg = isWarmup ? 'Loading sessions…' : 'No sessions online right now.';
-      empty.innerHTML = `${msg}<br/><span class="muted">Waiting for live updates…</span>`;
+      empty.innerHTML = `<div class="alert alert-info bg-base-200 border border-base-300"><span>${msg}</span></div>`;
       grid.appendChild(empty);
       return;
     }
     sessions.forEach(s => {
       const card = document.createElement('div');
-      card.className = 'card';
+      card.className = 'card bg-base-200 border border-base-300 cursor-pointer';
 
       const title = (((s.level && s.level.name) || '') + ' ' + ((s.name || ''))).toLowerCase();
       const isFFA = /(ffa|deathmatch|\bdm\b)/.test(title);
       const playersHtml = `
-        <div class="players">
+        <div class="mt-2 text-sm leading-6">
           ${(s.players||[]).map(p => {
             const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
             const star = (p.is_host || p.slot===1 || p.slot===6)? '★ ' : '';
-            const avatar = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" alt="" style="width:16px;height:16px;border-radius:50%;vertical-align:-3px;margin-right:6px;"/>` : '';
+            const avatar = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" alt="" class="inline-block w-4 h-4 rounded-full align-[-3px] mr-1.5"/>` : '';
             const score = (p.score!=null? ' (score '+p.score+')' : '');
             return `${star}${avatar}${nick}${score}`;
           }).join('<br/>')}
         </div>`;
       const teamsHtml = `
-        <div class="teams">
-          <div class="team">
-            <h4>Team 1</h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+          <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">
+            <h4 class="text-sm opacity-70 mb-1">Team 1</h4>
             ${(s.players||[]).filter(p=>!p.team_id || p.team_id===1).map(p => {
               const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
               const star = (p.is_host || p.slot===1 || p.slot===6)? '★ ' : '';
-              const avatar = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" alt="" style="width:16px;height:16px;border-radius:50%;vertical-align:-3px;margin-right:6px;"/>` : '';
+              const avatar = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" alt="" class="inline-block w-4 h-4 rounded-full align-[-3px] mr-1.5"/>` : '';
               const score = (p.score!=null? ' (score '+p.score+')' : '');
               return `${star}${avatar}${nick}${score}`;
-            }).join('<br/>') || '<span class="muted">Open</span>'}
-          </div>
-          <div class="team">
-            <h4>Team 2</h4>
+            }).join('<br/>') || '<span class="opacity-70 text-xs">Open</span>'}
+          </div></div>
+          <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">
+            <h4 class="text-sm opacity-70 mb-1">Team 2</h4>
             ${(s.players||[]).filter(p=>p.team_id===2).map(p => {
               const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
               const star = (p.is_host || p.slot===1 || p.slot===6)? '★ ' : '';
-              const avatar = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" alt="" style="width:16px;height:16px;border-radius:50%;vertical-align:-3px;margin-right:6px;"/>` : '';
+              const avatar = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" alt="" class="inline-block w-4 h-4 rounded-full align-[-3px] mr-1.5"/>` : '';
               const score = (p.score!=null? ' (score '+p.score+')' : '');
               return `${star}${avatar}${nick}${score}`;
-            }).join('<br/>') || '<span class="muted">Open</span>'}
-          </div>
+            }).join('<br/>') || '<span class="opacity-70 text-xs">Open</span>'}
+          </div></div>
         </div>`;
 
       const a = s.attributes || {};
       card.innerHTML = `
-        <div class="row">
-          <span class="badge">${s.state || 'Unknown'}</span>
-          <span class="badge">${s.nat_type || ''}</span>
-          ${a.worst_ping!=null ? `<span class="badge" title="Worst ping seen">Worst ${a.worst_ping}ms</span>` : ''}
-          ${a.game_mode ? `<span class=\"badge\" title=\"Game mode\">${a.game_mode}</span>` : ''}
-          <span class="muted">${s.version || ''}</span>
-          ${a.time_limit!=null ? `<span class="badge" title="Time limit">TL ${a.time_limit}m</span>` : ''}
-          ${a.kill_limit!=null ? `<span class="badge" title="Kill limit">KL ${a.kill_limit}</span>` : ''}
-          
-          <span class="muted" style="margin-left:auto">${(s.players||[]).length}${(s.attributes && s.attributes.max_players)? '/'+s.attributes.max_players : ''} players</span>
+        <div class="flex flex-wrap gap-2 items-center">
+          <span class="badge badge-outline badge-sm">${s.state || 'Unknown'}</span>
+          ${s.nat_type ? `<span class=\"badge badge-outline badge-sm\">${s.nat_type}</span>` : ''}
+          ${a.worst_ping!=null ? `<span class=\"badge badge-outline badge-sm\" title=\"Worst ping seen\">Worst ${a.worst_ping}ms</span>` : ''}
+          ${a.game_mode ? `<span class=\"badge badge-outline badge-sm\" title=\"Game mode\">${a.game_mode}</span>` : ''}
+          ${a.time_limit!=null ? `<span class=\"badge badge-outline badge-sm\" title=\"Time limit\">TL ${a.time_limit}m</span>` : ''}
+          ${a.kill_limit!=null ? `<span class=\"badge badge-outline badge-sm\" title=\"Kill limit\">KL ${a.kill_limit}</span>` : ''}
+          <span class="ml-auto text-xs opacity-70">${(s.players||[]).length}${(s.attributes && s.attributes.max_players)? '/'+s.attributes.max_players : ''} players</span>
         </div>
-        <h3>${(s.name || s.id)}</h3>
-        <div class="muted">${s.id}</div>
-        <div class="muted">${s.level && s.level.name ? ('Map: ' + s.level.name) : (s.map_file? ('Map: ' + s.map_file) : '')}
-          ${s.mod_details && (s.mod_details.name || s.mod) ? (' • Mod: ' + (s.mod_details.url ? (`<a href="${s.mod_details.url}" target="_blank" rel="noopener">${s.mod_details.name || s.mod}</a>`) : (s.mod_details.name || s.mod))) : ''}
+        <h3 class="mt-1 text-lg">${(s.name || s.id)}</h3>
+        <div class="text-xs opacity-70">${s.id}</div>
+        <div class="text-xs opacity-70">${s.level && s.level.name ? ('Map: ' + s.level.name) : (s.map_file? ('Map: ' + s.map_file) : '')}
+          ${s.mod_details && (s.mod_details.name || s.mod) ? (' • Mod: ' + (s.mod_details.url ? (`<a class=\"link\" href=\"${s.mod_details.url}\" target=\"_blank\" rel=\"noopener\">${s.mod_details.name || s.mod}</a>`) : (s.mod_details.name || s.mod))) : ''}
         </div>
         ${s.level && s.level.image ? `<img alt="map" class="map-thumb" src="${s.level.image}" onclick="event.stopPropagation(); (function(src){const m=document.createElement('div');m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:9999';m.onclick=()=>document.body.removeChild(m);const i=document.createElement('img');i.src=src;i.style.cssText='max-width:92vw;max-height:92vh;border-radius:10px;border:1px solid #1b2535';m.appendChild(i);document.body.appendChild(m);})('${s.level.image}')"/>` : ''}
         ${isFFA ? playersHtml : teamsHtml}
