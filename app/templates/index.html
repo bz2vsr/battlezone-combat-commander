@@ -186,9 +186,8 @@
             <div class="row">
               <span class="badge">${s.state || 'Unknown'}</span>
               <span class="badge">${s.nat_type || ''}</span>
-              <span class="muted">${s.version || ''}</span>
-              ${a.max_ping!=null ? `<span class="badge" title="Max ping allowed">Max ${a.max_ping}ms</span>` : ''}
               ${a.worst_ping!=null ? `<span class="badge" title="Worst ping seen">Worst ${a.worst_ping}ms</span>` : ''}
+              <span class="muted">${s.version || ''}</span>
               ${a.time_limit!=null ? `<span class="badge" title="Time limit">TL ${a.time_limit}m</span>` : ''}
               ${a.kill_limit!=null ? `<span class="badge" title="Kill limit">KL ${a.kill_limit}</span>` : ''}
               <span class="muted" style="margin-left:auto">${(s.players||[]).length} player(s) • ${timeAgo(s.last_seen_at)}</span>
