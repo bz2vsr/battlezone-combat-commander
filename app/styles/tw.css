@@ -6,7 +6,7 @@
 
 @layer components {
   /* Soft badges: subtle with outline and small radius */
-  .badge-soft { @apply badge badge-outline badge-sm rounded-[4px] border-base-300; }
+  .badge-soft { @apply badge badge-outline badge-sm rounded-[4px] border-neutral; }
   /* Accent-soft: filled accent with a faint border */
   .badge-accent-soft { @apply badge badge-accent badge-sm rounded-[4px] border border-base-300; }
 }

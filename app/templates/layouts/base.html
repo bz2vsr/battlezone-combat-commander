@@ -40,14 +40,17 @@
       <!-- Left drawer sidebar -->
       <div class="drawer-side z-40">
         <label for="left-drawer" class="drawer-overlay" aria-label="Close menu"></label>
-        <ul class="menu p-4 w-60 min-h-full bg-base-200 border-r border-base-300">
+        <div class="w-60 min-h-full bg-base-200 border-r border-base-300 flex flex-col">
+        <ul class="menu p-4 flex-1 overflow-auto">
           {% block sidebar_left %}
             {% include 'partials/nav_left.html' %}
-            <li class="mt-auto">
-              {% include 'partials/sidebar_user.html' %}
-            </li>
+            
           {% endblock %}
         </ul>
+        <div class="p-4 border-t border-base-300">
+          {% include 'partials/sidebar_user.html' %}
+        </div>
+        </div>
       </div>
     </div>
 

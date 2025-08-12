@@ -75,7 +75,7 @@
     }
     sessions.forEach(s => {
       const card = document.createElement('div');
-      card.className = 'card bg-base-200 border border-base-300 cursor-pointer';
+      card.className = 'card bg-base-200 border border-base-300 cursor-pointer p-3';
 
       const title = (((s.level && s.level.name) || '') + ' ' + ((s.name || ''))).toLowerCase();
       const isFFA = /(ffa|deathmatch|\bdm\b)/.test(title);
@@ -126,12 +126,16 @@
           ${a.kill_limit!=null ? `<span class=\"badge-soft\" title=\"Kill limit\">KL ${a.kill_limit}</span>` : ''}
           <span class="ml-auto text-xs opacity-70">${(s.players||[]).length}${(s.attributes && s.attributes.max_players)? '/'+s.attributes.max_players : ''} players</span>
         </div>
-        <h3 class="mt-1 text-lg">${(s.name || s.id)}</h3>
-        <div class="text-xs opacity-70">${s.id}</div>
-        <div class="text-xs opacity-70">${s.level && s.level.name ? ('Map: ' + s.level.name) : (s.map_file? ('Map: ' + s.map_file) : '')}
-          ${s.mod_details && (s.mod_details.name || s.mod) ? (' • Mod: ' + (s.mod_details.url ? (`<a class=\"link\" href=\"${s.mod_details.url}\" target=\"_blank\" rel=\"noopener\">${s.mod_details.name || s.mod}</a>`) : (s.mod_details.name || s.mod))) : ''}
+        <div class="mt-1 card bg-base-100 border border-base-300">
+          <div class="card-body p-3">
+            <h3 class="text-lg">${(s.name || s.id)}</h3>
+            <div class="text-xs opacity-70">${s.id}</div>
+            <div class="text-xs opacity-70">${s.level && s.level.name ? ('Map: ' + s.level.name) : (s.map_file? ('Map: ' + s.map_file) : '')}
+              ${s.mod_details && (s.mod_details.name || s.mod) ? (' • Mod: ' + (s.mod_details.url ? (`<a class=\"link\" href=\"${s.mod_details.url}\" target=\"_blank\" rel=\"noopener\">${s.mod_details.name || s.mod}</a>`) : (s.mod_details.name || s.mod))) : ''}
+            </div>
+          </div>
         </div>
-        ${s.level && s.level.image ? `<img alt="map" class="map-thumb" src="${s.level.image}" onclick="event.stopPropagation(); (function(src){const m=document.createElement('div');m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:9999';m.onclick=()=>document.body.removeChild(m);const i=document.createElement('img');i.src=src;i.style.cssText='max-width:92vw;max-height:92vh;border-radius:10px;border:1px solid #1b2535';m.appendChild(i);document.body.appendChild(m);})('${s.level.image}')"/>` : ''}
+        ${s.level && s.level.image ? `<div class="mt-2 card bg-base-100 border border-base-300"><div class="card-body p-3"><img alt="map" class="map-thumb" src="${s.level.image}" onclick="event.stopPropagation(); (function(src){const m=document.createElement('div');m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:9999';m.onclick=()=>document.body.removeChild(m);const i=document.createElement('img');i.src=src;i.style.cssText='max-width:92vw;max-height:92vh;border-radius:10px;border:1px solid #1b2535';m.appendChild(i);document.body.appendChild(m);})('${s.level.image}')"/></div></div>` : ''}
         ${isFFA ? playersHtml : teamsHtml}
       `;
       card.onclick = async () => {
