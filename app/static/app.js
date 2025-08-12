@@ -125,7 +125,7 @@
           ${a.time_limit!=null ? `<span class="badge" title="Time limit">TL ${a.time_limit}m</span>` : ''}
           ${a.kill_limit!=null ? `<span class="badge" title="Kill limit">KL ${a.kill_limit}</span>` : ''}
           
-          <span class="muted" style="margin-left:auto">${(s.players||[]).length}${(s.attributes && s.attributes.max_players)? '/'+s.attributes.max_players : ''} players • ${timeAgo(s.last_seen_at)}</span>
+          <span class="muted" style="margin-left:auto">${(s.players||[]).length}${(s.attributes && s.attributes.max_players)? '/'+s.attributes.max_players : ''} players</span>
         </div>
         <h3>${(s.name || s.id)}</h3>
         <div class="muted">${s.id}</div>
