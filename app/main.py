@@ -231,6 +231,23 @@ def create_app() -> Flask:
                         db.flush()
                 except Exception:
                     pass
+            # Secondary fallback: derive name from most recent in-game session record
+            if provider == "steam" and player and not player.display_name:
+                try:
+                    from sqlalchemy import text as _text
+                    r = db.execute(_text(
+                        """
+                        SELECT stats->>'name' AS name
+                        FROM session_players
+                        WHERE stats->>'steam_id' = :e
+                        ORDER BY id DESC LIMIT 1
+                        """
+                    ), {"e": external_id}).first()
+                    if r and r[0]:
+                        player.display_name = r[0]
+                        db.flush()
+                except Exception:
+                    pass
             return jsonify({
                 "user": {
                     "provider": provider,
@@ -302,11 +319,29 @@ def create_app() -> Flask:
             ).all()
             out = []
             for pr, ident, player in rows:
+                # If display name missing, derive from last seen session
+                display_name = player.display_name if player else None
+                avatar_url = player.avatar_url if player else None
+                if pr.provider == "steam" and not display_name:
+                    try:
+                        from sqlalchemy import text as _text
+                        r = db.execute(_text(
+                            """
+                            SELECT stats->>'name' AS name
+                            FROM session_players
+                            WHERE stats->>'steam_id' = :e
+                            ORDER BY id DESC LIMIT 1
+                            """
+                        ), {"e": pr.external_id}).first()
+                        if r and r[0]:
+                            display_name = r[0]
+                    except Exception:
+                        pass
                 out.append({
                     "provider": pr.provider,
                     "id": pr.external_id,
-                    "display_name": player.display_name if player else None,
-                    "avatar": player.avatar_url if player else None,
+                    "display_name": display_name,
+                    "avatar": avatar_url,
                     "profile": ident.profile_url if ident else None,
                 })
             return jsonify({"players": out})
