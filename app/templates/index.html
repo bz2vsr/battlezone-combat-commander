@@ -31,7 +31,7 @@
       .modal .panel { width:min(720px, 94vw); max-height:90vh; overflow:auto; background:#0f1622; border:1px solid #1b2535; border-radius:10px; padding:16px; }
     </style>
   </head>
-  <body>
+  <body id="gw-app" data-theme="dark">
     <header>
       <div class="left">
         <strong>GameWatch (Dev)</strong>
@@ -52,9 +52,9 @@
           </select>
         </label>
       </div>
-      <div class="right muted"><span id="connDot" class="dot"></span><span id="connText">Connecting…</span></div>
+      <div class="right muted gw-muted"><span id="connDot" class="dot gw-dot"></span><span id="connText">Connecting…</span></div>
     </header>
-    <div id="grid" class="grid"></div>
+    <div id="grid" class="grid gw-grid"></div>
     <div style="padding:0 16px 16px 16px;">
       <div class="card" style="cursor:default">
         <div class="row" style="justify-content:space-between;align-items:center">
@@ -196,6 +196,7 @@
               <span class="muted">${s.version || ''}</span>
               ${a.time_limit!=null ? `<span class="badge" title="Time limit">TL ${a.time_limit}m</span>` : ''}
               ${a.kill_limit!=null ? `<span class="badge" title="Kill limit">KL ${a.kill_limit}</span>` : ''}
+              ${a.vehicle_only ? `<span class="badge" title="Vehicle only">Vehicles</span>` : ''}
               <span class="muted" style="margin-left:auto">${(s.players||[]).length} player(s) • ${timeAgo(s.last_seen_at)}</span>
             </div>
             <h3>${(s.name || s.id)}</h3>

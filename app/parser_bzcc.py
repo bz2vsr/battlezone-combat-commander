@@ -101,7 +101,7 @@ def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
             # Use provided text, normalized to Title Case
             nat_type = nat_type_raw.replace("_", " ").strip().title() or None
 
-        # Additional attributes: ping/time rules
+        # Additional attributes: ping/time rules and vehicle-only detection
         attributes = {}
         max_ping = raw.get("pgm") or raw.get("MaxPing")
         if isinstance(max_ping, (int, str)) and str(max_ping).isdigit():
@@ -115,6 +115,17 @@ def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
         kill_limit = raw.get("ki") or raw.get("KillLimit")
         if isinstance(kill_limit, (int, str)) and str(kill_limit).isdigit():
             attributes["kill_limit"] = int(kill_limit)
+        # Vehicle-only (derived from sub game type like reference: detailed subtype values 6 or 7)
+        gtd_val = raw.get("gtd") or raw.get("GameSubType")
+        try:
+            gtd_int = int(gtd_val) if gtd_val is not None else None
+            if gtd_int is not None:
+                GAMEMODE_MAX = 14
+                detailed = gtd_int // GAMEMODE_MAX
+                if detailed in (6, 7):
+                    attributes["vehicle_only"] = True
+        except Exception:
+            pass
 
         sess = {
             "id": session_id,
