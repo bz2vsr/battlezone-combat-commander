@@ -5,6 +5,14 @@
   const body = document.getElementById('appModalBody');
   const btnProfile = document.getElementById('profileLink');
   const btnSignout = document.getElementById('signout');
+  // Sidebar user elements
+  const sbSignedIn = document.getElementById('sbSignedIn');
+  const sbSignedOut = document.getElementById('sbSignedOut');
+  const sbAvatar = document.getElementById('sbAvatar');
+  const sbName = document.getElementById('sbName');
+  const sbProfile = document.getElementById('sbProfile');
+  const sbOpenProfile = document.getElementById('sbOpenProfile');
+  const sbSignOut = document.getElementById('sbSignOut');
 
   async function fetchMe(){ try { const r = await fetch('/api/v1/me'); return await r.json(); } catch { return {user:null}; } }
 
@@ -25,6 +33,23 @@
     document.getElementById('no').onclick = ()=> modal.close();
     document.getElementById('yes').onclick = async ()=>{ try { await fetch('/auth/logout', {method:'POST'}); } catch {} location.href='/'; };
   });
+
+  // Initialize sidebar user section
+  (async function initSidebarUser(){
+    const { user } = await fetchMe();
+    if (user) {
+      if (sbSignedOut) sbSignedOut.classList.add('hidden');
+      if (sbSignedIn) sbSignedIn.classList.remove('hidden');
+      if (sbAvatar && user.avatar) sbAvatar.src = user.avatar;
+      if (sbName) sbName.textContent = user.display_name || user.id;
+      if (sbProfile) sbProfile.href = user.profile;
+      if (sbOpenProfile) sbOpenProfile.onclick = (e)=>{ e.preventDefault(); btnProfile?.click(); };
+      if (sbSignOut) sbSignOut.onclick = async (e)=>{ e.preventDefault(); try { await fetch('/auth/logout', {method:'POST'}); } catch {} location.href='/'; };
+    } else {
+      if (sbSignedOut) sbSignedOut.classList.remove('hidden');
+      if (sbSignedIn) sbSignedIn.classList.add('hidden');
+    }
+  })();
 })();
 
 

@@ -118,12 +118,12 @@
       const a = s.attributes || {};
       card.innerHTML = `
         <div class="flex flex-wrap gap-2 items-center">
-          <span class="badge-soft badge-sm rounded-[theme(borderRadius.badge)] ${((s.state||'')==='InGame') ? 'badge-accent' : 'badge-outline'}">${s.state || 'Unknown'}</span>
-          ${s.nat_type ? `<span class=\"badge-soft badge-sm rounded-[theme(borderRadius.badge)]\">${s.nat_type}</span>` : ''}
-          ${a.worst_ping!=null ? `<span class=\"badge-soft badge-sm rounded-[theme(borderRadius.badge)]\" title=\"Worst ping seen\">Worst ${a.worst_ping}ms</span>` : ''}
-          ${a.game_mode ? `<span class=\"badge-soft badge-sm rounded-[theme(borderRadius.badge)]\" title=\"Game mode\">${a.game_mode}</span>` : ''}
-          ${a.time_limit!=null ? `<span class=\"badge-soft badge-sm rounded-[theme(borderRadius.badge)]\" title=\"Time limit\">TL ${a.time_limit}m</span>` : ''}
-          ${a.kill_limit!=null ? `<span class=\"badge-soft badge-sm rounded-[theme(borderRadius.badge)]\" title=\"Kill limit\">KL ${a.kill_limit}</span>` : ''}
+          <span class="${((s.state||'')==='InGame') ? 'badge-accent-soft' : 'badge-soft'}">${s.state || 'Unknown'}</span>
+          ${s.nat_type ? `<span class=\"badge-soft\">${s.nat_type}</span>` : ''}
+          ${a.worst_ping!=null ? `<span class=\"badge-soft\" title=\"Worst ping seen\">Worst ${a.worst_ping}ms</span>` : ''}
+          ${a.game_mode ? `<span class=\"badge-soft\" title=\"Game mode\">${a.game_mode}</span>` : ''}
+          ${a.time_limit!=null ? `<span class=\"badge-soft\" title=\"Time limit\">TL ${a.time_limit}m</span>` : ''}
+          ${a.kill_limit!=null ? `<span class=\"badge-soft\" title=\"Kill limit\">KL ${a.kill_limit}</span>` : ''}
           <span class="ml-auto text-xs opacity-70">${(s.players||[]).length}${(s.attributes && s.attributes.max_players)? '/'+s.attributes.max_players : ''} players</span>
         </div>
         <h3 class="mt-1 text-lg">${(s.name || s.id)}</h3>
