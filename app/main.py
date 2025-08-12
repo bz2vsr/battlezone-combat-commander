@@ -189,6 +189,7 @@ def create_app() -> Flask:
                     if player:
                         player.display_name = p.get("personaname") or player.display_name
                         player.avatar_url = p.get("avatarfull") or player.avatar_url
+                        db.flush()
             except Exception:
                 pass
         session['uid'] = f"steam:{steamid}"
