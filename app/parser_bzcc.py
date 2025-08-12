@@ -101,7 +101,7 @@ def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
             # Use provided text, normalized to Title Case
             nat_type = nat_type_raw.replace("_", " ").strip().title() or None
 
-        # Additional attributes: ping/time rules and vehicle-only detection
+        # Additional attributes: ping/time rules, max players, and vehicle-only detection
         attributes = {}
         max_ping = raw.get("pgm") or raw.get("MaxPing")
         if isinstance(max_ping, (int, str)) and str(max_ping).isdigit():
@@ -109,6 +109,9 @@ def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
         worst_ping = raw.get("pg") or raw.get("MaxPingSeen")
         if isinstance(worst_ping, (int, str)) and str(worst_ping).isdigit():
             attributes["worst_ping"] = int(worst_ping)
+        max_players = raw.get("pm") or raw.get("MaxPlayers")
+        if isinstance(max_players, (int, str)) and str(max_players).isdigit():
+            attributes["max_players"] = int(max_players)
         time_limit = raw.get("ti") or raw.get("TimeLimit")
         if isinstance(time_limit, (int, str)) and str(time_limit).isdigit():
             attributes["time_limit"] = int(time_limit)
@@ -126,6 +129,38 @@ def normalize_bzcc_sessions(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
                     attributes["vehicle_only"] = True
         except Exception:
             pass
+
+        # Game mode/type derivation (simplified mapping)
+        game_type_val = raw.get("gt") or raw.get("GameType")
+        game_mode_val = raw.get("gtd") or raw.get("GameSubType")
+        game_mode: Optional[str] = None
+        try:
+            gt = int(game_type_val) if game_type_val is not None else None
+            gtd = int(game_mode_val) if game_mode_val is not None else None
+            if gt is not None and gtd is not None:
+                GAMEMODE_MAX = 14
+                base = gtd % GAMEMODE_MAX
+                is_team = base in (2, 4, 6, 8, 10, 12)  # rough team markers per C# set
+                if gt == 1:  # DM family
+                    mapping = {
+                        0: "DM",
+                        1: "KOTH",
+                        2: "CTF",
+                        3: "LOOT",
+                        5: "RACE",
+                        6: "RACE",  # Vehicle Only variant handled elsewhere
+                        7: "DM",     # Vehicle Only DM
+                    }
+                    name = mapping.get(base, "DM")
+                    game_mode = (f"TEAM_{name}" if is_team and name not in ("RACE",) else name)
+                elif gt == 2:  # STRAT family
+                    strat_map = {12: "STRAT", 11: "STRAT", 13: "MPI"}
+                    name = strat_map.get(base, "STRAT")
+                    game_mode = name
+        except Exception:
+            game_mode = None
+        if game_mode:
+            attributes["game_mode"] = game_mode
 
         sess = {
             "id": session_id,
