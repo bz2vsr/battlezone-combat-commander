@@ -38,7 +38,7 @@
       <!-- Left drawer sidebar -->
       <div class="drawer-side z-40 h-screen overflow-hidden">
         <label for="left-drawer" class="drawer-overlay" aria-label="Close menu"></label>
-        <div class="group w-60 lg:w-16 lg:group-hover:w-60 lg:focus-within:w-60 transition-all duration-200 min-h-full bg-base-200 border-r border-base-300 flex flex-col overflow-hidden">
+        <div class="w-60 min-h-full bg-base-200 border-r border-base-300 flex flex-col overflow-hidden">
         <ul class="menu p-4 flex-1 min-h-0 overflow-y-auto">
           {% block sidebar_left %}
             {% include 'partials/nav_left.html' %}
@@ -56,6 +56,7 @@
     {% include 'partials/modal.html' %}
 
     {% block scripts %}{% endblock %}
+    <script src="/socket.io/socket.io.js"></script>
     <script src="/static/app.js"></script>
     <script src="/static/js/app.js"></script>
   </body>

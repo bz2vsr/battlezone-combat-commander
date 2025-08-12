@@ -199,6 +199,7 @@
   }
 
   let sse;
+  let socket;
   function startSSE(){
     if (sse) sse.close();
     sse = new EventSource('/api/v1/stream/sessions');
@@ -224,11 +225,35 @@
     sse.onerror = ()=>{ connDot.className = 'dot err'; connText.textContent = 'Reconnecting…'; sse && sse.close(); setTimeout(startSSE, 5000); };
   }
 
+  function startWS(){
+    try {
+      // eslint-disable-next-line no-undef
+      socket = io();
+      socket.on('connect', ()=>{ connDot.className='dot ok'; connText.textContent='Live'; });
+      socket.on('sessions:update', (payload)=>{
+        if ((payload.sessions||[]).length > 0) firstDataReceived = true;
+        const req = new URL(url(), window.location);
+        const state = (req.searchParams.get('state')||'').toLowerCase();
+        const min = +(req.searchParams.get('min_players')||0);
+        const q = (req.searchParams.get('q')||'').toLowerCase();
+        let sessions = payload.sessions || [];
+        if (state) sessions = sessions.filter(s => (s.state||'').toLowerCase()===state);
+        if (min>0) sessions = sessions.filter(s => (s.players||[]).length>=min);
+        if (q) sessions = sessions.filter(s => (s.name||'').toLowerCase().includes(q) || (s.players||[]).some(p => (p.name||'').toLowerCase().includes(q)));
+        render({sessions});
+        renderOnlineSidebar();
+      });
+      socket.on('presence:update', ()=>{ renderOnlineSidebar(); });
+      socket.on('disconnect', ()=>{ connDot.className='dot err'; connText.textContent='Reconnecting…'; });
+    } catch {}
+  }
+
   fState.addEventListener('change', fetchOnce);
   fMin.addEventListener('change', fetchOnce);
   fQ.addEventListener('input', fetchOnce);
   fMod.addEventListener('change', fetchOnce);
   fetchOnce();
+  startWS();
   startSSE();
   // history chart removed from main page for now
   renderOnlineSidebar();

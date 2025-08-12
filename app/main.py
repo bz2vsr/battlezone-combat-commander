@@ -5,6 +5,10 @@ from app.store import get_current_sessions, get_session_detail, get_history_summ
 from app.store import get_mod_catalog
 from app.migrate import create_all, ensure_alter_tables
 from app.config import settings
+from flask_socketio import SocketIO
+
+
+socketio: SocketIO | None = None
 
 
 def create_app() -> Flask:
@@ -19,6 +23,16 @@ def create_app() -> Flask:
     except Exception as ex:
         # Defer hard failure to first DB access; still log to console
         print(f"[app] schema init warning: {ex}", flush=True)
+
+    # Initialize Socket.IO (Redis message queue for cross-process emit)
+    global socketio
+    if socketio is None:
+        socketio = SocketIO(
+            cors_allowed_origins=settings.ws_allowed_origins or "*",
+            message_queue=settings.redis_url or None,
+            async_mode="eventlet"
+        )
+        socketio.init_app(app)
 
     @app.get("/healthz")
     def healthz():
@@ -198,6 +212,12 @@ def create_app() -> Flask:
     @app.post("/auth/logout")
     def auth_logout():
         session.clear()
+        # notify presence update
+        try:
+            if socketio:
+                socketio.emit("presence:update", {"action": "logout"}, broadcast=True)
+        except Exception:
+            pass
         return jsonify({"ok": True})
 
     @app.get("/api/v1/me")
@@ -300,6 +320,11 @@ def create_app() -> Flask:
                 WHERE provider = :p AND external_id = :e
                 """
             ), {"p": provider, "e": external_id})
+        try:
+            if socketio:
+                socketio.emit("presence:update", {"provider": provider, "id": external_id}, broadcast=True)
+        except Exception:
+            pass
         return jsonify({"ok": True})
 
     @app.get("/api/v1/players/site-online")

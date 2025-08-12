@@ -7,6 +7,7 @@ from app.store import save_sessions
 from app.steam import enrich_steam_identities
 from app.enrich import enrich_sessions_levels
 from app.assets import ensure_placeholder_asset
+from flask_socketio import SocketIO
 
 
 def main() -> int:
@@ -16,6 +17,13 @@ def main() -> int:
     try:
         ensure_placeholder_asset()
         # Poll immediately on startup to prime the DB
+        # socketio client for emit via Redis message queue
+        sio = None
+        try:
+            if settings.redis_url:
+                sio = SocketIO(message_queue=settings.redis_url)
+        except Exception:
+            sio = None
         while True:
             try:
                 payload = fetch_raknet_payload()
@@ -44,6 +52,12 @@ def main() -> int:
                     except Exception as ex:
                         print(f"[worker] enrich error: {ex}", flush=True)
                     print(f"[worker] upsert sessions: {stats}", flush=True)
+                    # broadcast to websockets
+                    try:
+                        if sio:
+                            sio.emit("sessions:update", {"sessions": normalized}, broadcast=True)
+                    except Exception as ex:
+                        print(f"[worker] ws emit error: {ex}", flush=True)
             except Exception as ex:
                 print(f"[worker] poll error: {ex}", flush=True)
             time.sleep(interval)

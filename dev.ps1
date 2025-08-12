@@ -55,7 +55,7 @@ function Start-Services {
   Set-Content -Path (Join-Path $tmpDir 'worker.pid') -Value $worker.Id
 
   Write-Info "Starting web (http://127.0.0.1:$WebPort/)"
-  $web = Start-Process -FilePath $py -ArgumentList @("-m","flask","--app","app.main","run","--port","$WebPort") -WorkingDirectory $repoRoot -PassThru -WindowStyle Hidden
+  $web = Start-Process -FilePath $py -ArgumentList @("-c","from app.main import app, socketio; socketio.run(app, host='127.0.0.1', port=$WebPort)") -WorkingDirectory $repoRoot -PassThru -WindowStyle Hidden
   Set-Content -Path (Join-Path $tmpDir 'web.pid') -Value $web.Id
 
   Start-Sleep -Seconds 1
