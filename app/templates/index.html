@@ -2,24 +2,24 @@
 {% block title %}BZCC GameWatch (Dev){% endblock %}
 {% block content %}
   <div class="flex flex-wrap items-center gap-3 mb-4">
-    <label class="label">State
-      <select id="fState" class="select select-bordered select-sm ml-2">
+    <label class="flex items-center gap-2">State
+      <select id="fState" class="select select-bordered select-sm">
         <option value="">Any</option>
         <option>InGame</option>
         <option>PreGame</option>
         <option>PostGame</option>
       </select>
     </label>
-    <label class="label">Min Players <input id="fMin" type="number" min="0" value="0" class="input input-bordered input-sm w-20 ml-2" /></label>
-    <label class="label">Search <input id="fQ" placeholder="session/player" class="input input-bordered input-sm ml-2" /></label>
-    <label class="label">Mod
-      <select id="fMod" class="select select-bordered select-sm ml-2">
+    <label class="flex items-center gap-2">Min Players <input id="fMin" type="number" min="0" value="0" class="input input-bordered input-sm w-20" /></label>
+    <label class="flex items-center gap-2">Search <input id="fQ" placeholder="session/player" class="input input-bordered input-sm" /></label>
+    <label class="flex items-center gap-2">Mod
+      <select id="fMod" class="select select-bordered select-sm">
         <option value="">All</option>
       </select>
     </label>
-    <span class="ml-auto flex items-center text-sm"><span id="connDot" class="dot gw-dot"></span><span id="connText">Connecting…</span></span>
+    <span class="ml-auto flex items-center text-sm"><span id="connDot" class="status mr-2"></span><span id="connText">Connecting…</span></span>
   </div>
-  <div id="grid" class="grid gw-grid"></div>
+  <div id="grid" class="grid grid-cols-1 gap-4"></div>
 {% endblock %}
 {% block sidebar_right %}
   <div class="card bg-base-200 border border-base-300">

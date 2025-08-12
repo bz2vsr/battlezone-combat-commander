@@ -6,14 +6,14 @@
   const connDot = document.getElementById('connDot');
   const connText = document.getElementById('connText');
   const fMod = document.getElementById('fMod');
-  const modal = document.getElementById('modal');
-  const mTitle = document.getElementById('mTitle');
-  const mBody = document.getElementById('mBody');
+  // legacy modal shim removed in favor of DaisyUI modal in layout
+  const daisyModal = document.getElementById('appModal');
+  const mTitle = document.getElementById('appModalTitle');
+  const mBody = document.getElementById('appModalBody');
   let firstDataReceived = false;
   let isWarmup = true;
   setTimeout(()=>{ isWarmup = false; }, 8000);
-  document.getElementById('mClose').onclick = () => { modal.style.display = 'none'; modal.setAttribute('aria-hidden','true'); };
-  modal.addEventListener('click', (e)=>{ if(e.target===modal){ modal.style.display='none'; modal.setAttribute('aria-hidden','true'); }});
+  // DaisyUI modal buttons are handled in app/static/js/app.js
 
   function drawHistory(points){
     const c = document.getElementById('histCanvas');
@@ -138,8 +138,7 @@
           const detail = await res.json();
           mTitle.textContent = s.name || s.id;
           mBody.textContent = JSON.stringify(detail, null, 2);
-          modal.style.display = 'flex';
-          modal.setAttribute('aria-hidden','false');
+          daisyModal.showModal();
         } catch (e) {}
       };
       grid.appendChild(card);
