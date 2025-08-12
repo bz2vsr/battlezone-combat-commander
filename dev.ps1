@@ -73,13 +73,13 @@ function Stop-Services {
   $workerPidPath = Join-Path $tmpDir 'worker.pid'
   $webPidPath = Join-Path $tmpDir 'web.pid'
   if (Test-Path $workerPidPath) {
-    $pid = Get-Content $workerPidPath
-    try { Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue } catch {}
+    $workerProcId = Get-Content $workerPidPath
+    try { Stop-Process -Id $workerProcId -Force -ErrorAction SilentlyContinue } catch {}
     Remove-Item $workerPidPath -ErrorAction SilentlyContinue
   }
   if (Test-Path $webPidPath) {
-    $pid = Get-Content $webPidPath
-    try { Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue } catch {}
+    $webProcId = Get-Content $webPidPath
+    try { Stop-Process -Id $webProcId -Force -ErrorAction SilentlyContinue } catch {}
     Remove-Item $webPidPath -ErrorAction SilentlyContinue
   }
   # Fallback: kill stray processes by command line match
