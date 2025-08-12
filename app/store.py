@@ -183,6 +183,20 @@ def get_current_sessions(max_age_seconds: int = 120) -> List[Dict[str, Any]]:
                 if lvl:
                     level_name = lvl.name
                     level_image = lvl.image_url
+            # Mod name/image/url
+            mod_name = None
+            mod_image = None
+            mod_url = None
+            if row.mod_id:
+                mod_row = db.get(Mod, row.mod_id)
+                if mod_row:
+                    mod_name = mod_row.name
+                    mod_image = mod_row.image_url
+                try:
+                    if row.mod_id and int(row.mod_id) > 0:
+                        mod_url = f"http://steamcommunity.com/sharedfiles/filedetails/?id={row.mod_id}"
+                except Exception:
+                    mod_url = None
             # Fallback placeholder asset if level image missing
             placeholder_img = "/static/assets/placeholder-thumbnail-200x200.svg"
             out.append({
@@ -195,6 +209,8 @@ def get_current_sessions(max_age_seconds: int = 120) -> List[Dict[str, Any]]:
                 "nat_type": row.nat_type,
                 "map_file": row.map_file,
                 "mod": row.mod_id,
+                "mod_name": mod_name,
+                "mod_details": {"name": mod_name, "image": mod_image, "url": mod_url} if (mod_name or mod_image or mod_url) else None,
                 "attributes": row.attributes,
                 "level": {"name": level_name or (row.map_file or "(unknown)"), "image": level_image or placeholder_img} if (row.map_file or level_name or level_image) else None,
                 "last_seen_at": (row.last_seen_at.isoformat() if row.last_seen_at else None),
@@ -305,5 +321,24 @@ def get_session_detail(session_id: str) -> Dict[str, Any] | None:
             "last_seen_at": (row.last_seen_at.isoformat() if row.last_seen_at else None),
             "players": players,
         }
+
+
+def get_mod_catalog() -> Dict[str, Dict[str, Any]]:
+    """Return a mapping of mod_id -> {name, image, url} for all known mods."""
+    catalog: Dict[str, Dict[str, Any]] = {}
+    with session_scope() as db:
+        for m in db.query(Mod).all():
+            url: str | None = None
+            try:
+                if m.id and int(m.id) > 0:
+                    url = f"http://steamcommunity.com/sharedfiles/filedetails/?id={m.id}"
+            except Exception:
+                url = None
+            catalog[m.id] = {
+                "name": m.name,
+                "image": m.image_url,
+                "url": url,
+            }
+    return catalog
 
 
