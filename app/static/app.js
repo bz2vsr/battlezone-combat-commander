@@ -5,7 +5,6 @@
   const fQ = document.getElementById('fQ');
   const connDot = document.getElementById('connDot');
   const connText = document.getElementById('connText');
-  const fVsr = document.getElementById('fVsr');
   const fMod = document.getElementById('fMod');
   const modal = document.getElementById('modal');
   const mTitle = document.getElementById('mTitle');
@@ -185,8 +184,6 @@
     if (fQ.value) p.set('q', fQ.value);
     if (fMod.value) {
       p.set('mod', fMod.value);
-    } else if (fVsr.checked) {
-      p.set('mod', '1325933293');
     }
     return `/api/v1/sessions/current?${p.toString()}`;
   }
