@@ -1,0 +1,59 @@
+<!doctype html>
+<html data-theme="bzccdark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}BZCC GameWatch{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/app.tailwind.css" />
+    <link rel="stylesheet" href="/static/css/app.css" />
+    {% block head_extra %}{% endblock %}
+  </head>
+  <body class="min-h-screen">
+    <div class="drawer lg:drawer-open">
+      <input id="left-drawer" type="checkbox" class="drawer-toggle" />
+      <div class="drawer-content flex flex-col">
+        <!-- Top navbar -->
+        <div class="navbar bg-base-100 border-b border-base-300">
+          <div class="flex-none lg:hidden">
+            <label for="left-drawer" class="btn btn-square btn-ghost" aria-label="Open menu">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+            </label>
+          </div>
+          <div class="flex-1">
+            <a href="/" class="btn btn-ghost normal-case text-xl">GameWatch</a>
+          </div>
+          <div class="flex-none gap-2">
+            {% include 'partials/profile_menu.html' %}
+          </div>
+        </div>
+
+        <!-- Main content area -->
+        <div class="grid grid-cols-1 xl:grid-cols-4 gap-4 p-4">
+          <main class="xl:col-span-3">
+            {% block content %}{% endblock %}
+          </main>
+          <aside>
+            {% block sidebar_right %}{% endblock %}
+          </aside>
+        </div>
+      </div>
+      <!-- Left drawer sidebar -->
+      <div class="drawer-side z-40">
+        <label for="left-drawer" class="drawer-overlay" aria-label="Close menu"></label>
+        <ul class="menu p-4 w-72 min-h-full bg-base-200 border-r border-base-300">
+          {% block sidebar_left %}
+            {% include 'partials/nav_left.html' %}
+          {% endblock %}
+        </ul>
+      </div>
+    </div>
+
+    <!-- Shared modal container -->
+    {% include 'partials/modal.html' %}
+
+    {% block scripts %}{% endblock %}
+    <script src="/static/js/app.js"></script>
+  </body>
+  </html>
+
+

@@ -1,18 +1,7 @@
-<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Privacy Policy • BZCC GameWatch</title>
-    <link rel="stylesheet" href="/static/app.css" />
-  </head>
-  <body id="gw-app" data-theme="dark" style="padding:16px">
-    <header style="padding:0 0 12px 0; border-bottom:1px solid #1b2535; margin-bottom:16px">
-      <strong>BZCC GameWatch</strong>
-      <span class="muted" style="margin-left:8px">Privacy Policy</span>
-    </header>
-
-    <main class="card" style="max-width:900px; margin:0 auto">
+{% extends 'layouts/base.html' %}
+{% block title %}Privacy Policy • BZCC GameWatch{% endblock %}
+{% block content %}
+    <main class="card bg-base-200 border border-base-300 max-w-4xl mx-auto">
       <h3 style="margin-top:0">Privacy Policy</h3>
       <p class="muted">Last updated: <span id="ppDate">today</span></p>
       <p>
@@ -43,10 +32,11 @@
       <p class="muted">Questions? Contact the site operator.</p>
       <p><a href="/" class="muted">Return to GameWatch</a></p>
     </main>
-    <script>
-      document.getElementById('ppDate').textContent = new Date().toISOString().slice(0,10);
-    </script>
-  </body>
-  </html>
+{% endblock %}
+{% block scripts %}
+<script>
+  document.getElementById('ppDate').textContent = new Date().toISOString().slice(0,10);
+</script>
+{% endblock %}
 
 

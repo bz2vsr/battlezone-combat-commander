@@ -1,59 +1,33 @@
-<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>BZCC GameWatch (Dev)</title>
-    <link rel="stylesheet" href="/static/app.css" />
-  </head>
-  <body id="gw-app" data-theme="dark">
-    <header>
-      <div class="left">
-        <strong>GameWatch (Dev)</strong>
-        <label>State
-          <select id="fState">
-            <option value="">Any</option>
-            <option>InGame</option>
-            <option>PreGame</option>
-            <option>PostGame</option>
-          </select>
-        </label>
-        <label>Min Players <input id="fMin" type="number" min="0" value="0" style="width:64px" /></label>
-        <label>Search <input id="fQ" placeholder="session/player" /></label>
-        
-        <label>Mod
-          <select id="fMod">
-            <option value="">All</option>
-          </select>
-        </label>
-      </div>
-      <div class="right muted gw-muted">
-        <a id="signin" href="/auth/steam/login" style="text-decoration:none;background:#0f1622;border:1px solid #243149;padding:6px 10px;border-radius:6px;cursor:pointer">Sign in with Steam</a>
-        <span id="me" class="muted" style="display:none"></span>
-        <a id="profileLink" href="#" target="_blank" rel="noopener" style="display:none;text-decoration:none;background:#0f1622;border:1px solid #243149;padding:6px 10px;border-radius:6px;cursor:pointer">Profile</a>
-        <button id="signout" style="display:none;background:#0f1622;color:#e6e9ef;border:1px solid #243149;padding:6px 10px;border-radius:6px;cursor:pointer">Sign out</button>
-        <span style="margin-left:8px"><a class="muted" href="/privacy">Privacy</a></span>
-        <span id="connWrap" style="margin-left:12px"><span id="connDot" class="dot gw-dot"></span><span id="connText">Connecting…</span></span>
-      </div>
-    </header>
-    <div class="page">
-      <div id="grid" class="grid gw-grid"></div>
-      <aside class="sidebar" aria-label="Players online (in-game)">
-        <h4>Players online</h4>
-        <div id="onlineList" class="online"></div>
-      </aside>
+{% extends 'layouts/base.html' %}
+{% block title %}BZCC GameWatch (Dev){% endblock %}
+{% block content %}
+  <div class="flex flex-wrap items-center gap-3 mb-4">
+    <label class="label">State
+      <select id="fState" class="select select-bordered select-sm ml-2">
+        <option value="">Any</option>
+        <option>InGame</option>
+        <option>PreGame</option>
+        <option>PostGame</option>
+      </select>
+    </label>
+    <label class="label">Min Players <input id="fMin" type="number" min="0" value="0" class="input input-bordered input-sm w-20 ml-2" /></label>
+    <label class="label">Search <input id="fQ" placeholder="session/player" class="input input-bordered input-sm ml-2" /></label>
+    <label class="label">Mod
+      <select id="fMod" class="select select-bordered select-sm ml-2">
+        <option value="">All</option>
+      </select>
+    </label>
+    <span class="ml-auto flex items-center text-sm"><span id="connDot" class="dot gw-dot"></span><span id="connText">Connecting…</span></span>
+  </div>
+  <div id="grid" class="grid gw-grid"></div>
+{% endblock %}
+{% block sidebar_right %}
+  <div class="card bg-base-200 border border-base-300">
+    <div class="card-body p-4">
+      <h4 class="card-title text-sm">Players online</h4>
+      <div id="onlineList" class="online"></div>
     </div>
-    <div id="modal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
-      <div class="panel">
-        <div class="row" style="justify-content:space-between">
-          <strong id="mTitle">Session</strong>
-          <button id="mClose" style="background:#0b111b;color:#e6e9ef;border:1px solid #243149;padding:4px 8px;border-radius:6px">Close</button>
-        </div>
-        <pre id="mBody" class="muted" style="white-space:pre-wrap"></pre>
-      </div>
-    </div>
-    <script src="/static/app.js"></script>
-  </body>
-  </html>
+  </div>
+{% endblock %}
 
 

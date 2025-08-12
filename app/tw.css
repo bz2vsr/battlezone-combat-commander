@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Bridge existing CSS tokens into Tailwind context */
+:root {
+  --hud-bg: #0b0f14;
+  --hud-surface: #0f1622;
+  --hud-border: #1b2535;
+}
+
+body {
+  @apply bg-[var(--hud-bg)] text-base-content;
+}
+
+
