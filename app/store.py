@@ -40,7 +40,7 @@ def save_sessions(normalized: List[Dict[str, Any]]) -> Dict[str, int]:
                     map_file=s.get("map_file"),
                     mod_id=s.get("mod"),
                     level_map_id=None,
-                    attributes=None,
+                    attributes=s.get("attributes"),
                     started_at=now,
                     last_seen_at=now,
                 )
@@ -54,6 +54,8 @@ def save_sessions(normalized: List[Dict[str, Any]]) -> Dict[str, int]:
                 row.nat_type = s.get("nat_type")
                 row.map_file = s.get("map_file")
                 row.mod_id = s.get("mod")
+                if s.get("attributes") is not None:
+                    row.attributes = s.get("attributes")
                 row.last_seen_at = now
                 # If we marked this session as ended previously but we see it again, revive it
                 if row.ended_at is not None:
@@ -193,6 +195,7 @@ def get_current_sessions(max_age_seconds: int = 120) -> List[Dict[str, Any]]:
                 "nat_type": row.nat_type,
                 "map_file": row.map_file,
                 "mod": row.mod_id,
+                "attributes": row.attributes,
                 "level": {"name": level_name or (row.map_file or "(unknown)"), "image": level_image or placeholder_img} if (row.map_file or level_name or level_image) else None,
                 "last_seen_at": (row.last_seen_at.isoformat() if row.last_seen_at else None),
                 "players": players,
