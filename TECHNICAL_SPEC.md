@@ -386,6 +386,7 @@ Success criteria per milestone will be tracked alongside issues/PRs.
 - 2025-08-10: Added Preparation checklist; defined user/curator/admin capabilities; documented approved policies (no hotlinking, WS+SSE, 5s polling) and detailed backoff strategy; clarified SSO order and cost posture.
 - 2025-08-10: Implemented base web API + worker; added `/api/v1/sessions/current`, SSE stream, basic GameWatch UI; added `levels`/`mods` tables; created `session_snapshots` and history summary endpoint; enabled asset mirroring to local `/static/assets`; added Steam enrichment groundwork (GetPlayerSummaries) and API hydration for Steam identity; added Admin utilities plan (health/raknet/db tools).
 - 2025-08-12: Planned Presence endpoints and Team Picker feature (public read‑only view; commander‑only actions; finalize flow that does not modify main GameWatch UI; optional status indicator when in‑game team assignments match finalized roster). Added data model stubs and realtime rooms for Team Picker.
+- 2025-08-13: Implemented Team Picker backend scaffold: SQLAlchemy tables (`team_pick_sessions`, `team_pick_picks`, `team_pick_participants`) and v1 endpoints (`GET /api/v1/team_picker/{session_id}`, POST `start`, `coin_toss`, `pick`, `finalize`, `cancel`). Realtime emits on `team_picker:update` to room `team_picker:{session_id}` when WS enabled.
 
 ---
 

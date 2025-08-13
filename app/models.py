@@ -113,3 +113,50 @@ class SitePresence(Base):
     external_id: Mapped[str] = mapped_column(String(64), index=True)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, index=True)
 
+
+class TeamPickSession(Base):
+    __tablename__ = "team_pick_sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    session_id: Mapped[str] = mapped_column(String(128), index=True)
+    state: Mapped[str] = mapped_column(String(16), default="open", index=True)
+    coin_winner_team: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by_provider: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    created_by_external_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    accepted_by_commander1: Mapped[bool] = mapped_column(Boolean, default=False)
+    accepted_by_commander2: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class TeamPickPick(Base):
+    __tablename__ = "team_pick_picks"
+    __table_args__ = (
+        UniqueConstraint("pick_session_id", "order_index", name="uq_team_pick_order"),
+        UniqueConstraint("pick_session_id", "player_steam_id", name="uq_team_pick_player_once"),
+        Index("ix_team_pick_picks_session", "pick_session_id"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    pick_session_id: Mapped[int] = mapped_column(ForeignKey("team_pick_sessions.id", ondelete="CASCADE"))
+    order_index: Mapped[int] = mapped_column(Integer)
+    team_id: Mapped[int] = mapped_column(Integer)  # 1 or 2
+    player_steam_id: Mapped[str] = mapped_column(String(64))
+    picked_by_provider: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    picked_by_external_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    picked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+
+class TeamPickParticipant(Base):
+    __tablename__ = "team_pick_participants"
+    __table_args__ = (
+        UniqueConstraint("pick_session_id", "provider", "external_id", name="uq_team_pick_participant_unique"),
+        Index("ix_team_pick_participants_session", "pick_session_id"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    pick_session_id: Mapped[int] = mapped_column(ForeignKey("team_pick_sessions.id", ondelete="CASCADE"))
+    provider: Mapped[str] = mapped_column(String(16))
+    external_id: Mapped[str] = mapped_column(String(64))
+    role: Mapped[str] = mapped_column(String(16))  # commander1, commander2, viewer

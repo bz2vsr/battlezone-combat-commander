@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request, Response, stream_with_context, render_template, redirect, session
 import json
 import time
+import secrets
 from app.store import get_current_sessions, get_session_detail, get_history_summary, get_maps_summary, get_mods_summary
 from app.store import get_mod_catalog
 from app.migrate import create_all, ensure_alter_tables
@@ -368,6 +369,304 @@ def create_app() -> Flask:
                     "profile": ident.profile_url if ident else None,
                 })
             return jsonify({"players": out})
+
+    # --- Team Picker (per TECHNICAL_SPEC.md Sections 4 & 5) ---
+    @app.get("/api/v1/team_picker/<path:session_id>")
+    def team_picker_get(session_id: str):
+        from app.db import session_scope
+        from app.models import TeamPickSession, TeamPickPick, TeamPickParticipant, Identity, Player
+        from sqlalchemy import select as _select
+        with session_scope() as db:
+            tps = db.execute(
+                _select(TeamPickSession)
+                .where(TeamPickSession.session_id == session_id, TeamPickSession.state != "canceled")
+                .order_by(TeamPickSession.id.desc())
+            ).scalars().first()
+            if not tps:
+                return jsonify({"session": None})
+            picks = db.execute(
+                _select(TeamPickPick).where(TeamPickPick.pick_session_id == tps.id).order_by(TeamPickPick.order_index.asc())
+            ).scalars().all()
+            parts = db.execute(
+                _select(TeamPickParticipant).where(TeamPickParticipant.pick_session_id == tps.id)
+            ).scalars().all()
+            # Enrich pick player Steam details
+            steam_ids = [p.player_steam_id for p in picks if p.player_steam_id]
+            mapping = {}
+            if steam_ids:
+                rows = db.execute(
+                    _select(Identity, Player)
+                    .where(Identity.provider == "steam", Identity.external_id.in_(steam_ids))
+                    .join(Player, Identity.player_id == Player.id, isouter=True)
+                ).all()
+                for ident, player in rows:
+                    mapping[str(ident.external_id)] = {
+                        "id": str(ident.external_id),
+                        "profile": ident.profile_url,
+                        "nickname": (player.display_name if player else None),
+                        "avatar": (player.avatar_url if player else None),
+                    }
+            return jsonify({
+                "session": {
+                    "id": tps.id,
+                    "game_session_id": tps.session_id,
+                    "state": tps.state,
+                    "coin_winner_team": tps.coin_winner_team,
+                    "created_at": tps.created_at.isoformat() if tps.created_at else None,
+                    "closed_at": tps.closed_at.isoformat() if tps.closed_at else None,
+                    "accepted": {
+                        "commander1": bool(tps.accepted_by_commander1),
+                        "commander2": bool(tps.accepted_by_commander2),
+                    },
+                    "participants": [
+                        {
+                            "provider": r.provider,
+                            "id": r.external_id,
+                            "role": r.role,
+                        } for r in parts
+                    ],
+                    "picks": [
+                        {
+                            "order": p.order_index,
+                            "team_id": p.team_id,
+                            "player": {
+                                "steam_id": p.player_steam_id,
+                                "steam": mapping.get(p.player_steam_id),
+                            },
+                            "picked_at": p.picked_at.isoformat() if p.picked_at else None,
+                        } for p in picks
+                    ],
+                }
+            })
+
+    @app.post("/api/v1/team_picker/<path:session_id>/start")
+    def team_picker_start(session_id: str):
+        # Creator must be logged in and one of the commanders
+        uid = session.get('uid')
+        if not uid:
+            return jsonify({"ok": False, "error": "not_authenticated"}), 401
+        creator_provider, creator_external = uid.split(":", 1)
+        payload = request.get_json(silent=True) or {}
+        cmd1 = payload.get("commander1_id")
+        cmd2 = payload.get("commander2_id")
+        from app.db import session_scope
+        from app.models import TeamPickSession, TeamPickParticipant, SessionPlayer
+        from sqlalchemy import select as _select
+        with session_scope() as db:
+            # Infer commanders if not provided: use slots 1 and 6 steam_ids if available
+            if not cmd1 or not cmd2:
+                rows = db.execute(
+                    _select(SessionPlayer).where(SessionPlayer.session_id == session_id).order_by(SessionPlayer.slot.asc())
+                ).scalars().all()
+                # Host heuristic already present (slots 1,6)
+                cands = []
+                for sp in rows:
+                    if sp.is_host and sp.stats and sp.stats.get("steam_id"):
+                        cands.append(str(sp.stats.get("steam_id")))
+                if len(cands) >= 2:
+                    if not cmd1:
+                        cmd1 = cands[0]
+                    if not cmd2:
+                        cmd2 = cands[1]
+            if not cmd1 or not cmd2:
+                return jsonify({"ok": False, "error": "missing_commanders"}), 400
+            if str(creator_provider) == "steam" and str(creator_external) not in (str(cmd1), str(cmd2)):
+                # Only allow a commander to start
+                return jsonify({"ok": False, "error": "forbidden"}), 403
+            # Close any existing open sessions for this game session
+            open_rows = db.execute(
+                _select(TeamPickSession).where(TeamPickSession.session_id == session_id, TeamPickSession.state == "open")
+            ).scalars().all()
+            from datetime import datetime as _dt
+            for r in open_rows:
+                r.state = "canceled"
+                r.closed_at = _dt.utcnow()
+            # Create new pick session
+            tps = TeamPickSession(
+                session_id=session_id,
+                state="open",
+                created_by_provider=creator_provider,
+                created_by_external_id=creator_external,
+            )
+            db.add(tps)
+            db.flush()
+            # Participants
+            db.add(TeamPickParticipant(pick_session_id=tps.id, provider="steam", external_id=str(cmd1), role="commander1"))
+            db.add(TeamPickParticipant(pick_session_id=tps.id, provider="steam", external_id=str(cmd2), role="commander2"))
+            if str(creator_provider) == "steam" and str(creator_external) not in (str(cmd1), str(cmd2)):
+                db.add(TeamPickParticipant(pick_session_id=tps.id, provider=creator_provider, external_id=creator_external, role="viewer"))
+        try:
+            if socketio:
+                socketio.emit("team_picker:update", {"session_id": session_id, "action": "start"}, room=f"team_picker:{session_id}", broadcast=True)
+        except Exception:
+            pass
+        return team_picker_get(session_id)
+
+    @app.post("/api/v1/team_picker/<path:session_id>/coin_toss")
+    def team_picker_coin_toss(session_id: str):
+        uid = session.get('uid')
+        if not uid:
+            return jsonify({"ok": False, "error": "not_authenticated"}), 401
+        provider, external = uid.split(":", 1)
+        from app.db import session_scope
+        from app.models import TeamPickSession, TeamPickParticipant
+        from sqlalchemy import select as _select
+        with session_scope() as db:
+            tps = db.execute(
+                _select(TeamPickSession).where(TeamPickSession.session_id == session_id, TeamPickSession.state == "open")
+            ).scalars().first()
+            if not tps:
+                return jsonify({"ok": False, "error": "not_found_or_closed"}), 404
+            if tps.coin_winner_team is not None:
+                return jsonify({"ok": False, "error": "already_tossed"}), 400
+            part = db.execute(
+                _select(TeamPickParticipant).where(TeamPickParticipant.pick_session_id == tps.id, TeamPickParticipant.provider == provider, TeamPickParticipant.external_id == external)
+            ).scalars().first()
+            if not part or part.role not in ("commander1", "commander2"):
+                return jsonify({"ok": False, "error": "forbidden"}), 403
+            tps.coin_winner_team = 1 if secrets.randbits(1) == 0 else 2
+        try:
+            if socketio:
+                socketio.emit("team_picker:update", {"session_id": session_id, "action": "coin_toss", "team": tps.coin_winner_team}, room=f"team_picker:{session_id}", broadcast=True)
+        except Exception:
+            pass
+        return team_picker_get(session_id)
+
+    @app.post("/api/v1/team_picker/<path:session_id>/pick")
+    def team_picker_pick(session_id: str):
+        uid = session.get('uid')
+        if not uid:
+            return jsonify({"ok": False, "error": "not_authenticated"}), 401
+        provider, external = uid.split(":", 1)
+        payload = request.get_json(silent=True) or {}
+        steam_id = str(payload.get("player_steam_id") or "").strip()
+        if not steam_id:
+            return jsonify({"ok": False, "error": "missing_player_steam_id"}), 400
+        from app.db import session_scope
+        from app.models import TeamPickSession, TeamPickParticipant, TeamPickPick
+        from sqlalchemy import select as _select
+        with session_scope() as db:
+            tps = db.execute(
+                _select(TeamPickSession).where(TeamPickSession.session_id == session_id, TeamPickSession.state == "open")
+            ).scalars().first()
+            if not tps:
+                return jsonify({"ok": False, "error": "not_found_or_closed"}), 404
+            if tps.coin_winner_team is None:
+                return jsonify({"ok": False, "error": "coin_required"}), 400
+            # Determine caller role
+            part = db.execute(
+                _select(TeamPickParticipant).where(TeamPickParticipant.pick_session_id == tps.id, TeamPickParticipant.provider == provider, TeamPickParticipant.external_id == external)
+            ).scalars().first()
+            if not part or part.role not in ("commander1", "commander2"):
+                return jsonify({"ok": False, "error": "forbidden"}), 403
+            # Determine next team to pick
+            existing = db.execute(
+                _select(TeamPickPick).where(TeamPickPick.pick_session_id == tps.id).order_by(TeamPickPick.order_index.asc())
+            ).scalars().all()
+            order_index = len(existing) + 1
+            # Starting team is coin_winner_team; alternate thereafter
+            if len(existing) % 2 == 0:
+                next_team = tps.coin_winner_team
+            else:
+                next_team = 2 if tps.coin_winner_team == 1 else 1
+            # Only the corresponding commander may pick
+            required_role = "commander1" if next_team == 1 else "commander2"
+            if part.role != required_role:
+                return jsonify({"ok": False, "error": "not_your_turn"}), 400
+            # Prevent duplicate picks
+            dup = db.execute(
+                _select(TeamPickPick).where(TeamPickPick.pick_session_id == tps.id, TeamPickPick.player_steam_id == steam_id)
+            ).scalars().first()
+            if dup:
+                return jsonify({"ok": False, "error": "already_picked"}), 400
+            p = TeamPickPick(
+                pick_session_id=tps.id,
+                order_index=order_index,
+                team_id=next_team,
+                player_steam_id=steam_id,
+                picked_by_provider=provider,
+                picked_by_external_id=external,
+            )
+            db.add(p)
+        try:
+            if socketio:
+                socketio.emit("team_picker:update", {"session_id": session_id, "action": "pick"}, room=f"team_picker:{session_id}", broadcast=True)
+        except Exception:
+            pass
+        return team_picker_get(session_id)
+
+    @app.post("/api/v1/team_picker/<path:session_id>/finalize")
+    def team_picker_finalize(session_id: str):
+        uid = session.get('uid')
+        if not uid:
+            return jsonify({"ok": False, "error": "not_authenticated"}), 401
+        provider, external = uid.split(":", 1)
+        from app.db import session_scope
+        from app.models import TeamPickSession, TeamPickParticipant
+        from sqlalchemy import select as _select
+        with session_scope() as db:
+            tps = db.execute(
+                _select(TeamPickSession).where(TeamPickSession.session_id == session_id, TeamPickSession.state == "open")
+            ).scalars().first()
+            if not tps:
+                return jsonify({"ok": False, "error": "not_found_or_closed"}), 404
+            part = db.execute(
+                _select(TeamPickParticipant).where(TeamPickParticipant.pick_session_id == tps.id, TeamPickParticipant.provider == provider, TeamPickParticipant.external_id == external)
+            ).scalars().first()
+            if not part or part.role not in ("commander1", "commander2"):
+                return jsonify({"ok": False, "error": "forbidden"}), 403
+            if part.role == "commander1":
+                tps.accepted_by_commander1 = True
+            elif part.role == "commander2":
+                tps.accepted_by_commander2 = True
+            # If both accepted, finalize
+            if tps.accepted_by_commander1 and tps.accepted_by_commander2:
+                from datetime import datetime as _dt
+                tps.state = "final"
+                tps.closed_at = _dt.utcnow()
+        try:
+            if socketio:
+                socketio.emit("team_picker:update", {"session_id": session_id, "action": "finalize"}, room=f"team_picker:{session_id}", broadcast=True)
+        except Exception:
+            pass
+        return team_picker_get(session_id)
+
+    @app.post("/api/v1/team_picker/<path:session_id>/cancel")
+    def team_picker_cancel(session_id: str):
+        uid = session.get('uid')
+        if not uid:
+            return jsonify({"ok": False, "error": "not_authenticated"}), 401
+        provider, external = uid.split(":", 1)
+        from app.db import session_scope
+        from app.models import TeamPickSession, TeamPickParticipant
+        from sqlalchemy import select as _select
+        with session_scope() as db:
+            tps = db.execute(
+                _select(TeamPickSession).where(TeamPickSession.session_id == session_id, TeamPickSession.state == "open")
+            ).scalars().first()
+            if not tps:
+                return jsonify({"ok": False, "error": "not_found_or_closed"}), 404
+            # Allow commanders or creator
+            allowed = False
+            if tps.created_by_provider == provider and tps.created_by_external_id == external:
+                allowed = True
+            else:
+                part = db.execute(
+                    _select(TeamPickParticipant).where(TeamPickParticipant.pick_session_id == tps.id, TeamPickParticipant.provider == provider, TeamPickParticipant.external_id == external)
+                ).scalars().first()
+                if part and part.role in ("commander1", "commander2"):
+                    allowed = True
+            if not allowed:
+                return jsonify({"ok": False, "error": "forbidden"}), 403
+            from datetime import datetime as _dt
+            tps.state = "canceled"
+            tps.closed_at = _dt.utcnow()
+        try:
+            if socketio:
+                socketio.emit("team_picker:update", {"session_id": session_id, "action": "cancel"}, room=f"team_picker:{session_id}", broadcast=True)
+        except Exception:
+            pass
+        return team_picker_get(session_id)
 
     # Simple Admin Tools (scaffold)
     @app.get("/admin")
