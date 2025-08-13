@@ -89,7 +89,7 @@
             const dot = online ? '<span class="dot ok sm"></span>' : '';
             const avatar = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" alt="" class="w-4 h-4 rounded-full mr-2 flex-none"/>` : '';
             const score = (p.score!=null? ` <span class=\"opacity-70 text-xs\">(score ${p.score})</span>` : '');
-            return `<div class="flex items-center truncate">${isStar?'<span class="mr-2">★</span>':''}${dot}${avatar}<span class="truncate">${nick}</span>${score}</div>`;
+            return `<div class="flex items-center truncate">${isStar?'<span class=\"mr-2\">★</span>':''}${avatar}<span class=\"truncate flex-1\">${nick}</span>${score}${dot?`<span class=\\\"ml-2\\\">${dot}</span>`:''}</div>`;
           }).join('')}
         </div>`;
       const teamsHtml = `
@@ -104,7 +104,7 @@
                           const dot = online ? '<span class=\"dot ok sm\"></span>' : '';
                           const avatar = (p.steam && p.steam.avatar) ? `<img src=\"${p.steam.avatar}\" alt=\"\" class=\"w-4 h-4 rounded-full mr-2 flex-none\"/>` : '';
                           const score = (p.score!=null? ` <span class=\\"opacity-70 text-xs\\">(score ${p.score})</span>` : '');
-                          return `<div class="flex items-center truncate">${isStar?'<span class="mr-2">★</span>':''}${dot}${avatar}<span class="truncate">${nick}</span>${score}</div>`;
+                          return `<div class=\"flex items-center truncate\">${isStar?'<span class=\\\"mr-2\\\">★</span>':''}${avatar}<span class=\\\"truncate flex-1\\\">${nick}</span>${score}${dot?`<span class=\\\\\\\"ml-2\\\\\\\">${dot}</span>`:''}</div>`;
                         }).join('') || '<span class="opacity-70 text-xs">Open</span>'}
             <div class="grow"></div>
           </div></div>
@@ -118,7 +118,7 @@
                           const dot = online ? '<span class=\"dot ok sm\"></span>' : '';
                           const avatar = (p.steam && p.steam.avatar) ? `<img src=\"${p.steam.avatar}\" alt=\"\" class=\"w-4 h-4 rounded-full mr-2 flex-none\"/>` : '';
                           const score = (p.score!=null? ` <span class=\\"opacity-70 text-xs\\">(score ${p.score})</span>` : '');
-                          return `<div class="flex items-center truncate">${isStar?'<span class="mr-2">★</span>':''}${dot}${avatar}<span class="truncate">${nick}</span>${score}</div>`;
+                          return `<div class=\"flex items-center truncate\">${isStar?'<span class=\\\"mr-2\\\">★</span>':''}${avatar}<span class=\\\"truncate flex-1\\\">${nick}</span>${score}${dot?`<span class=\\\\\\\"ml-2\\\\\\\">${dot}</span>`:''}</div>`;
                         }).join('') || '<span class="opacity-70 text-xs">Open</span>'}
             <div class="grow"></div>
           </div></div>
