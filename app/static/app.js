@@ -83,11 +83,11 @@
         <div class="mt-2 text-sm leading-6">
           ${(s.players||[]).map(p => {
             const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
-            const star = (p.is_host || p.slot===1 || p.slot===6)? '★ ' : '';
-            const avatar = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" alt="" class="inline-block w-4 h-4 rounded-full align-[-3px] mr-1.5"/>` : '';
-            const score = (p.score!=null? ' (score '+p.score+')' : '');
-            return `${star}${avatar}${nick}${score}`;
-          }).join('<br/>')}
+            const isStar = (p.is_host || p.slot===1 || p.slot===6);
+            const avatar = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" alt="" class="w-4 h-4 rounded-full mr-2 shrink-0"/>` : '';
+            const score = (p.score!=null? ` <span class=\"opacity-70 text-xs\">(score ${p.score})</span>` : '');
+            return `<div class=\"flex items-center gap-2 truncate\">${isStar?'<span>★</span>':''}${avatar}<span class=\"truncate\">${nick}</span>${score}</div>`;
+          }).join('')}
         </div>`;
       const teamsHtml = `
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2 items-stretch">
@@ -95,22 +95,22 @@
             <h4 class="text-sm opacity-70 mb-1">Team 1</h4>
             ${(s.players||[]).filter(p=>!p.team_id || p.team_id===1).map(p => {
               const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
-              const star = (p.is_host || p.slot===1 || p.slot===6)? '★ ' : '';
-              const avatar = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" alt="" class="inline-block w-4 h-4 rounded-full align-[-3px] mr-1.5"/>` : '';
-              const score = (p.score!=null? ' (score '+p.score+')' : '');
-              return `${star}${avatar}${nick}${score}`;
-            }).join('<br/>') || '<span class="opacity-70 text-xs">Open</span>'}
+              const isStar = (p.is_host || p.slot===1 || p.slot===6);
+              const avatar = (p.steam && p.steam.avatar) ? `<img src=\"${p.steam.avatar}\" alt=\"\" class=\"w-4 h-4 rounded-full mr-2 shrink-0\"/>` : '';
+              const score = (p.score!=null? ` <span class=\\"opacity-70 text-xs\\">(score ${p.score})</span>` : '');
+              return `<div class=\"flex items-center gap-2 truncate\">${isStar?'<span>★</span>':''}${avatar}<span class=\"truncate\">${nick}</span>${score}</div>`;
+            }).join('') || '<span class="opacity-70 text-xs">Open</span>'}
             <div class="grow"></div>
           </div></div>
           <div class="card bg-base-100 border border-base-300 h-full"><div class="card-body p-3 h-full">
             <h4 class="text-sm opacity-70 mb-1">Team 2</h4>
             ${(s.players||[]).filter(p=>p.team_id===2).map(p => {
               const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
-              const star = (p.is_host || p.slot===1 || p.slot===6)? '★ ' : '';
-              const avatar = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" alt="" class="inline-block w-4 h-4 rounded-full align-[-3px] mr-1.5"/>` : '';
-              const score = (p.score!=null? ' (score '+p.score+')' : '');
-              return `${star}${avatar}${nick}${score}`;
-            }).join('<br/>') || '<span class="opacity-70 text-xs">Open</span>'}
+              const isStar = (p.is_host || p.slot===1 || p.slot===6);
+              const avatar = (p.steam && p.steam.avatar) ? `<img src=\"${p.steam.avatar}\" alt=\"\" class=\"w-4 h-4 rounded-full mr-2 shrink-0\"/>` : '';
+              const score = (p.score!=null? ` <span class=\\"opacity-70 text-xs\\">(score ${p.score})</span>` : '');
+              return `<div class=\"flex items-center gap-2 truncate\">${isStar?'<span>★</span>':''}${avatar}<span class=\"truncate\">${nick}</span>${score}</div>`;
+            }).join('') || '<span class="opacity-70 text-xs">Open</span>'}
             <div class="grow"></div>
           </div></div>
         </div>`;
@@ -202,10 +202,12 @@
   }
 
   let sse;
+  let sseLive = false;
   let socket;
   function startSSE(){
     if (sse) sse.close();
     sse = new EventSource('/api/v1/stream/sessions');
+    sse.onopen = ()=>{ sseLive = true; connDot.className='dot ok'; connText.textContent='Live'; };
     sse.onmessage = (ev) => {
       connDot.className = 'dot ok';
       connText.textContent = 'Live';
@@ -225,18 +227,18 @@
       render({sessions});
       renderOnlineSidebar();
     };
-    sse.onerror = ()=>{ connDot.className = 'dot err'; connText.textContent = 'Reconnecting…'; sse && sse.close(); setTimeout(startSSE, 5000); };
+    sse.onerror = ()=>{ sseLive = false; connDot.className = 'dot err'; connText.textContent = 'Reconnecting…'; sse && sse.close(); setTimeout(startSSE, 5000); };
   }
 
   function startWS(){
     try {
       // eslint-disable-next-line no-undef
       socket = io('/', { transports: ['websocket', 'polling'] });
-      socket.on('connect', ()=>{ connDot.className='dot ok'; connText.textContent='Live'; });
+      socket.on('connect', ()=>{ if (!sseLive) { connDot.className='dot ok'; connText.textContent='Live'; } });
       socket.on('sessions:update', ()=>{ fetchOnce(); renderOnlineSidebar(); });
-      socket.on('connect_error', ()=>{ connDot.className='dot err'; connText.textContent='Reconnecting…'; });
+      socket.on('connect_error', ()=>{ if (!sseLive) { connDot.className='dot err'; connText.textContent='Reconnecting…'; } });
       socket.on('presence:update', ()=>{ renderOnlineSidebar(); });
-      socket.on('disconnect', ()=>{ connDot.className='dot err'; connText.textContent='Reconnecting…'; });
+      socket.on('disconnect', ()=>{ if (!sseLive) { connDot.className='dot err'; connText.textContent='Reconnecting…'; } });
     } catch {}
   }
 
