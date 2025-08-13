@@ -33,13 +33,40 @@ function Ensure-Venv {
 function Ensure-DBSchema {
   $py = Join-Path $repoRoot ".venv/Scripts/python.exe"
   Write-Info "Ensuring database schema"
-  & $py -c "from app.migrate import create_all, ensure_alter_tables; create_all(); ensure_alter_tables(); print('[schema] ready')"
+  $dbu = $env:DATABASE_URL
+  if (-not $dbu) {
+    Write-Warn "DATABASE_URL is not set. Create a .env with local settings (see TECHNICAL_SPEC.md §10) or export DATABASE_URL."
+  }
+  try {
+    & $py -c "from app.migrate import create_all, ensure_alter_tables; create_all(); ensure_alter_tables(); print('[schema] ready')"
+  } catch {
+    Write-Warn "Schema initialization failed. Likely causes: Postgres not running or DATABASE_URL incorrect."
+    if ($dbu) { Write-Warn ("Current DATABASE_URL: {0}" -f $dbu) }
+    Write-Warn "If you use Docker Desktop, start it and ensure containers 'bzcc-postgres' and 'bzcc-redis' are running."
+    Write-Warn "Alternatively, point DATABASE_URL at a native Postgres."
+    throw
+  }
 }
 
 function Try-Start-Docker {
-  if ($NoDocker) { return }
-  try { docker start bzcc-postgres | Out-Null } catch { Write-Warn 'Could not start docker container bzcc-postgres (ignored)' }
-  try { docker start bzcc-redis | Out-Null } catch { Write-Warn 'Could not start docker container bzcc-redis (ignored)' }
+  if ($NoDocker) { Write-Info 'NoDocker specified; skipping Docker checks'; return }
+  # Detect Docker CLI
+  $dockerCmd = Get-Command docker -ErrorAction SilentlyContinue
+  if (-not $dockerCmd) {
+    Write-Warn 'Docker CLI not found. Install Docker Desktop: https://www.docker.com/products/docker-desktop'
+    return
+  }
+  # Check engine availability
+  $engineOk = $true
+  try { docker info | Out-Null } catch { $engineOk = $false }
+  if (-not $engineOk) {
+    Write-Warn 'Docker Desktop appears to be stopped or the engine is unavailable. Start Docker Desktop, then rerun .\dev.ps1 start.'
+    Write-Warn "Skipping container start; if DATABASE_URL points to Docker Postgres, schema init will fail."
+    return
+  }
+  # Attempt to start expected containers; warn if missing
+  try { docker start bzcc-postgres | Out-Null } catch { Write-Warn 'Could not start docker container bzcc-postgres (missing or error). You may need to create it.' }
+  try { docker start bzcc-redis | Out-Null } catch { Write-Warn 'Could not start docker container bzcc-redis (missing or error). You may need to create it.' }
 }
 
 function Start-Services {
