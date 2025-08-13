@@ -51,11 +51,20 @@ function Start-Services {
   if (-not (Test-Path $tmpDir)) { New-Item -ItemType Directory -Path $tmpDir | Out-Null }
 
   Write-Info "Starting worker"
-  $worker = Start-Process -FilePath $py -ArgumentList @("-m","worker.runner") -WorkingDirectory $repoRoot -PassThru -WindowStyle Hidden
+  $workerOut = Join-Path $tmpDir 'worker.out.log'
+  $workerErr = Join-Path $tmpDir 'worker.err.log'
+  $worker = Start-Process -FilePath $py -ArgumentList @("-m","worker.runner") -WorkingDirectory $repoRoot -PassThru -WindowStyle Hidden -RedirectStandardOutput $workerOut -RedirectStandardError $workerErr
   Set-Content -Path (Join-Path $tmpDir 'worker.pid') -Value $worker.Id
 
-  Write-Info "Starting web (http://127.0.0.1:$WebPort/)"
-  $web = Start-Process -FilePath $py -ArgumentList @("-m","flask","--app","app.main","run","--port","$WebPort") -WorkingDirectory $repoRoot -PassThru -WindowStyle Hidden
+  # Ensure env for SocketIO
+  if (-not $env:REDIS_URL) { $env:REDIS_URL = "redis://localhost:6379/0" }
+  if (-not $env:WS_ALLOWED_ORIGINS) { $env:WS_ALLOWED_ORIGINS = "http://localhost:$WebPort" }
+
+  Write-Info "Starting web (SocketIO) (http://127.0.0.1:$WebPort/)"
+  $webOut = Join-Path $tmpDir 'web.out.log'
+  $webErr = Join-Path $tmpDir 'web.err.log'
+  $env:PORT = "$WebPort"
+  $web = Start-Process -FilePath $py -ArgumentList @("-m","app.run_socketio") -WorkingDirectory $repoRoot -PassThru -WindowStyle Hidden -RedirectStandardOutput $webOut -RedirectStandardError $webErr
   Set-Content -Path (Join-Path $tmpDir 'web.pid') -Value $web.Id
 
   Start-Sleep -Seconds 1

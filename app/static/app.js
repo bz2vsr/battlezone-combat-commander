@@ -228,7 +228,7 @@
   function startWS(){
     try {
       // eslint-disable-next-line no-undef
-      socket = io();
+      socket = io('/', { transports: ['websocket', 'polling'] });
       socket.on('connect', ()=>{ connDot.className='dot ok'; connText.textContent='Live'; });
       socket.on('sessions:update', (payload)=>{
         if ((payload.sessions||[]).length > 0) firstDataReceived = true;
