@@ -37,13 +37,14 @@ function Ensure-DBSchema {
   $envPath = Join-Path $repoRoot ".env"
   if (-not $dbu) {
     if (Test-Path $envPath) {
-      Write-Info "No DATABASE_URL in shell; .env detected — the app will load it at runtime (see TECHNICAL_SPEC.md §10)."
+      Write-Info "No DATABASE_URL in shell; .env detected - the app will load it at runtime (see TECHNICAL_SPEC.md Section 10)."
     } else {
-      Write-Warn "DATABASE_URL is not set and no .env found. Create a .env (see TECHNICAL_SPEC.md §10) or export DATABASE_URL."
+      Write-Warn "DATABASE_URL is not set and no .env found. Create a .env (see TECHNICAL_SPEC.md Section 10) or export DATABASE_URL."
     }
   }
   try {
-    & $py -c "from app.migrate import create_all, ensure_alter_tables; create_all(); ensure_alter_tables(); print('[schema] ready')"
+    $code = 'from app.migrate import create_all, ensure_alter_tables; create_all(); ensure_alter_tables(); print("[schema] ready")'
+    & $py -c $code
   } catch {
     Write-Warn "Schema initialization failed. Likely causes: Postgres not running or DATABASE_URL incorrect."
     if ($dbu) { Write-Warn ("Current DATABASE_URL: {0}" -f $dbu) }
