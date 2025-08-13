@@ -1,9 +1,0 @@
-/* Legacy CSS intentionally cleared; DaisyUI/Tailwind provide styling. Keep only necessary small helpers. */
-.dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; background:#586173; }
-.dot.sm { width:6px; height:6px; margin-right:4px; display:inline-block; }
-.dot.edge { margin-left:8px; }
-.players-online a { text-decoration: none; }
-.players-online a:hover { text-decoration: underline; }
-.dot.ok { background:#22c55e; }
-.dot.err { background:#ef4444; }
-.map-thumb { width:200px; height:200px; object-fit:cover; border-radius:8px; border:1px solid #1b2535; cursor:zoom-in; display:block; margin-top:8px; }
