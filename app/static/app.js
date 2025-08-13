@@ -86,17 +86,9 @@
           ${(s.players||[]).map(p => {
             const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
             const isStar = (p.is_host || p.slot===1 || p.slot===6);
-            const sid = (p.steam && p.steam.id) ? String(p.steam.id) : (p.steam_id ? String(p.steam_id) : null);
-            const online = sid && siteOnlineIds.has(sid);
-            const dot = online ? '<span class="dot ok sm"></span>' : '';
             const avatar = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" alt="" class="w-4 h-4 rounded-full mr-2 flex-none"/>` : '';
             const score = (p.score!=null? ` <span class=\"opacity-70 text-xs\">(score ${p.score})</span>` : '');
-            return `<div class="relative flex items-center w-full min-w-0 pr-6 self-stretch">
-              ${isStar?'<span class=\"mr-2\">★</span>':''}
-              ${avatar}
-              <span class="truncate">${nick}</span>${score}
-              ${dot?`<span class=\\\"absolute right-0\\\">${dot}</span>`:''}
-            </div>`;
+            return `<div class="flex items-center truncate">${isStar?'<span class=\"mr-2\">★</span>':''}${avatar}<span class="truncate">${nick}</span>${score}</div>`;
           }).join('')}
         </div>`;
       const teamsHtml = `
@@ -106,12 +98,9 @@
                         ${(s.players||[]).filter(p=>!p.team_id || p.team_id===1).map(p => {
                           const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
                           const isStar = (p.is_host || p.slot===1 || p.slot===6);
-                          const sid = (p.steam && p.steam.id) ? String(p.steam.id) : (p.steam_id ? String(p.steam_id) : null);
-                          const online = sid && siteOnlineIds.has(sid);
-                          const dot = online ? '<span class=\"dot ok sm\"></span>' : '';
                           const avatar = (p.steam && p.steam.avatar) ? `<img src=\"${p.steam.avatar}\" alt=\"\" class=\"w-4 h-4 rounded-full mr-2 flex-none\"/>` : '';
                           const score = (p.score!=null? ` <span class=\\"opacity-70 text-xs\\">(score ${p.score})</span>` : '');
-                          return `<div class=\"relative flex items-center w-full min-w-0 pr-6 self-stretch\">\n                            ${isStar?'<span class=\\\"mr-2\\\">★</span>':''}\n                            ${avatar}\n                            <span class=\\\"truncate\\\">${nick}</span>${score}\n                            ${dot?`<span class=\\\\\\\"absolute right-0\\\\\\\">${dot}</span>`:''}\n                          </div>`;
+                          return `<div class=\"flex items-center truncate\">${isStar?'<span class=\\\"mr-2\\\">★</span>':''}${avatar}<span class=\"truncate\">${nick}</span>${score}</div>`;
                         }).join('') || '<span class="opacity-70 text-xs">Open</span>'}
             <div class="grow"></div>
           </div></div>
@@ -120,12 +109,9 @@
                         ${(s.players||[]).filter(p=>p.team_id===2).map(p => {
                           const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
                           const isStar = (p.is_host || p.slot===1 || p.slot===6);
-                          const sid = (p.steam && p.steam.id) ? String(p.steam.id) : (p.steam_id ? String(p.steam_id) : null);
-                          const online = sid && siteOnlineIds.has(sid);
-                          const dot = online ? '<span class=\"dot ok sm\"></span>' : '';
                           const avatar = (p.steam && p.steam.avatar) ? `<img src=\"${p.steam.avatar}\" alt=\"\" class=\"w-4 h-4 rounded-full mr-2 flex-none\"/>` : '';
                           const score = (p.score!=null? ` <span class=\\"opacity-70 text-xs\\">(score ${p.score})</span>` : '');
-                          return `<div class=\"relative flex items-center w-full min-w-0 pr-6 self-stretch\">\n                            ${isStar?'<span class=\\\"mr-2\\\">★</span>':''}\n                            ${avatar}\n                            <span class=\\\"truncate\\\">${nick}</span>${score}\n                            ${dot?`<span class=\\\\\\\"absolute right-0\\\\\\\">${dot}</span>`:''}\n                          </div>`;
+                          return `<div class=\"flex items-center truncate\">${isStar?'<span class=\\\"mr-2\\\">★</span>':''}${avatar}<span class=\"truncate\">${nick}</span>${score}</div>`;
                         }).join('') || '<span class="opacity-70 text-xs">Open</span>'}
             <div class="grow"></div>
           </div></div>
@@ -190,7 +176,8 @@
         const sid = p.steam && p.steam.id ? String(p.steam.id) : (p.steam_id ? String(p.steam_id) : null);
         const active = sid && siteMap.has(sid);
         const dot = active ? '<span class="dot ok mr-2"></span>' : '<span class="dot mr-2"></span>';
-        return `<div class="flex items-center">${dot}${avatar}<span class="truncate">${name}</span></div>`;
+        const profile = (p.steam && p.steam.profile) ? p.steam.profile : (sid ? `https://steamcommunity.com/profiles/${sid}/` : '#');
+        return `<div class="flex items-center">${dot}${avatar}<a class="truncate link" href="${profile}" target="_blank" rel="noopener">${name}</a></div>`;
       }).join('');
     } catch {
       box.innerHTML = '<span class="muted">Unavailable</span>';
