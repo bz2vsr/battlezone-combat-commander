@@ -43,7 +43,7 @@ function Ensure-DBSchema {
     }
   }
   try {
-    $code = 'from app.migrate import create_all, ensure_alter_tables; create_all(); ensure_alter_tables(); print("[schema] ready")'
+    $code = 'from app.migrate import create_all, ensure_alter_tables; create_all(); ensure_alter_tables()'
     & $py -c $code
   } catch {
     Write-Warn "Schema initialization failed. Likely causes: Postgres not running or DATABASE_URL incorrect."
