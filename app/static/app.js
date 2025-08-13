@@ -84,9 +84,12 @@
           ${(s.players||[]).map(p => {
             const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
             const isStar = (p.is_host || p.slot===1 || p.slot===6);
+            const sid = (p.steam && p.steam.id) ? String(p.steam.id) : (p.steam_id ? String(p.steam_id) : null);
+            const online = sid && siteOnlineIds.has(sid);
+            const dot = online ? '<span class="dot ok sm"></span>' : '';
             const avatar = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" alt="" class="w-4 h-4 rounded-full mr-2 flex-none"/>` : '';
             const score = (p.score!=null? ` <span class=\"opacity-70 text-xs\">(score ${p.score})</span>` : '');
-            return `<div class="flex items-center truncate">${isStar?'<span class="mr-2">★</span>':''}${avatar}<span class="truncate">${nick}</span>${score}</div>`;
+            return `<div class="flex items-center truncate">${isStar?'<span class="mr-2">★</span>':''}${dot}${avatar}<span class="truncate">${nick}</span>${score}</div>`;
           }).join('')}
         </div>`;
       const teamsHtml = `
@@ -96,9 +99,12 @@
                         ${(s.players||[]).filter(p=>!p.team_id || p.team_id===1).map(p => {
                           const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
                           const isStar = (p.is_host || p.slot===1 || p.slot===6);
+                          const sid = (p.steam && p.steam.id) ? String(p.steam.id) : (p.steam_id ? String(p.steam_id) : null);
+                          const online = sid && siteOnlineIds.has(sid);
+                          const dot = online ? '<span class=\"dot ok sm\"></span>' : '';
                           const avatar = (p.steam && p.steam.avatar) ? `<img src=\"${p.steam.avatar}\" alt=\"\" class=\"w-4 h-4 rounded-full mr-2 flex-none\"/>` : '';
                           const score = (p.score!=null? ` <span class=\\"opacity-70 text-xs\\">(score ${p.score})</span>` : '');
-                          return `<div class="flex items-center truncate">${isStar?'<span class="mr-2">★</span>':''}${avatar}<span class="truncate">${nick}</span>${score}</div>`;
+                          return `<div class="flex items-center truncate">${isStar?'<span class="mr-2">★</span>':''}${dot}${avatar}<span class="truncate">${nick}</span>${score}</div>`;
                         }).join('') || '<span class="opacity-70 text-xs">Open</span>'}
             <div class="grow"></div>
           </div></div>
@@ -107,9 +113,12 @@
                         ${(s.players||[]).filter(p=>p.team_id===2).map(p => {
                           const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
                           const isStar = (p.is_host || p.slot===1 || p.slot===6);
+                          const sid = (p.steam && p.steam.id) ? String(p.steam.id) : (p.steam_id ? String(p.steam_id) : null);
+                          const online = sid && siteOnlineIds.has(sid);
+                          const dot = online ? '<span class=\"dot ok sm\"></span>' : '';
                           const avatar = (p.steam && p.steam.avatar) ? `<img src=\"${p.steam.avatar}\" alt=\"\" class=\"w-4 h-4 rounded-full mr-2 flex-none\"/>` : '';
                           const score = (p.score!=null? ` <span class=\\"opacity-70 text-xs\\">(score ${p.score})</span>` : '');
-                          return `<div class="flex items-center truncate">${isStar?'<span class="mr-2">★</span>':''}${avatar}<span class="truncate">${nick}</span>${score}</div>`;
+                          return `<div class="flex items-center truncate">${isStar?'<span class="mr-2">★</span>':''}${dot}${avatar}<span class="truncate">${nick}</span>${score}</div>`;
                         }).join('') || '<span class="opacity-70 text-xs">Open</span>'}
             <div class="grow"></div>
           </div></div>
@@ -163,6 +172,7 @@
       const site = siteRes ? await siteRes.json() : {players: []};
       const players = ing.players || [];
       const siteMap = new Map((site.players||[]).map(p => [String(p.id), p]));
+      siteOnlineIds = new Set(Array.from(siteMap.keys()));
       if (players.length === 0) {
         box.innerHTML = '<span class="muted">No players detected</span>';
         return;
