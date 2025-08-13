@@ -49,12 +49,12 @@ function Ensure-DBSchema {
 }
 
 function Try-Start-Docker {
-  if ($NoDocker) { Write-Info 'NoDocker specified; skipping Docker checks'; return }
+  if ($NoDocker) { Write-Info 'NoDocker specified; skipping Docker checks'; return $true }
   # Detect Docker CLI
   $dockerCmd = Get-Command docker -ErrorAction SilentlyContinue
   if (-not $dockerCmd) {
     Write-Warn 'Docker CLI not found. Install Docker Desktop: https://www.docker.com/products/docker-desktop'
-    return
+    return $false
   }
   # Check engine availability
   $engineOk = $true
@@ -62,16 +62,21 @@ function Try-Start-Docker {
   if (-not $engineOk) {
     Write-Warn 'Docker Desktop appears to be stopped or the engine is unavailable. Start Docker Desktop, then rerun .\dev.ps1 start.'
     Write-Warn "Skipping container start; if DATABASE_URL points to Docker Postgres, schema init will fail."
-    return
+    return $false
   }
   # Attempt to start expected containers; warn if missing
   try { docker start bzcc-postgres | Out-Null } catch { Write-Warn 'Could not start docker container bzcc-postgres (missing or error). You may need to create it.' }
   try { docker start bzcc-redis | Out-Null } catch { Write-Warn 'Could not start docker container bzcc-redis (missing or error). You may need to create it.' }
+  return $true
 }
 
 function Start-Services {
   Ensure-Venv
-  Try-Start-Docker
+  $dockerReady = Try-Start-Docker
+  if (-not $NoDocker -and -not $dockerReady) {
+    Write-Warn 'Docker Desktop is not running. Please start Docker Desktop and re-run .\dev.ps1 start.'
+    return
+  }
   Ensure-DBSchema
 
   $py = Join-Path $repoRoot ".venv/Scripts/python.exe"
