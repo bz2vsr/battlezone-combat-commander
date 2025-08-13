@@ -142,13 +142,48 @@
       `;
       card.onclick = async () => {
         try {
-          const res = await fetch(`/api/v1/sessions/${encodeURIComponent(s.id)}`);
-          const detail = await res.json();
-          mTitle.textContent = s.name || s.id;
-          mBody.textContent = JSON.stringify(detail, null, 2);
+          // Load Team Picker state for this session; if none, show CTA to start
+          const res = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`);
+          const data = await res.json();
+          mTitle.textContent = 'Team Picker';
+          const sess = data && data.session;
+          if (!sess) {
+            mBody.innerHTML = `<div class="space-y-3">
+              <div class="text-sm opacity-80">No Team Picker is active for this session.</div>
+              <button id="tpStart" class="btn btn-sm btn-primary">Start Team Picker</button>
+            </div>`;
+            daisyModal.showModal();
+            const btn = document.getElementById('tpStart');
+            if (btn) btn.onclick = async ()=>{
+              try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/start`, {method:'POST', headers:{'Content-Type':'application/json'}}); } catch {}
+              try { const r = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j = await r.json(); renderTP(j.session); } catch {}
+            };
+            return;
+          }
+          renderTP(sess);
           daisyModal.showModal();
         } catch (e) {}
       };
+
+      function renderTP(tp){
+        const picks = (tp.picks||[]).map(p=>`<div class="flex items-center justify-between text-sm"><span class="opacity-70">#${p.order}</span><span>Team ${p.team_id}</span><span class="truncate">${(p.player&&p.player.steam&&p.player.steam.nickname)||p.player.steam_id}</span></div>`).join('');
+        const parts = (tp.participants||[]).map(p=>`<span class="badge-soft">${p.role}: ${p.id}</span>`).join(' ');
+        const coin = tp.coin_winner_team? `<span class="badge-soft">Coin: Team ${tp.coin_winner_team}</span>` : '<button id="tpCoin" class="btn btn-xs">Coin toss</button>';
+        mBody.innerHTML = `
+          <div class="space-y-3">
+            <div class="flex gap-2 items-center text-sm"><span class="badge-soft">${tp.state}</span>${coin}${parts}</div>
+            <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">${picks || '<span class="opacity-70 text-sm">No picks yet</span>'}</div></div>
+            <div class="flex gap-2">
+              <input id="tpSteamId" class="input input-sm input-bordered" placeholder="SteamID64 to pick" />
+              <button id="tpPick" class="btn btn-sm btn-primary">Pick</button>
+              <button id="tpFinalize" class="btn btn-sm">Finalize</button>
+            </div>
+          </div>`;
+        const btnCoin = document.getElementById('tpCoin');
+        if (btnCoin) btnCoin.onclick = async ()=>{ try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/coin_toss`, {method:'POST'}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {} };
+        document.getElementById('tpPick').onclick = async ()=>{ const sid = document.getElementById('tpSteamId').value.trim(); if(!sid) return; try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/pick`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({player_steam_id: sid})}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {} };
+        document.getElementById('tpFinalize').onclick = async ()=>{ try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/finalize`, {method:'POST'}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {} };
+      }
       grid.appendChild(card);
     });
   }

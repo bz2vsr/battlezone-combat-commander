@@ -692,6 +692,53 @@ def create_app() -> Flask:
         except Exception as ex:
             return jsonify({"ok": False, "error": str(ex)})
 
+    # --- Dev utilities (non-production only) ---
+    if (settings.flask_env or "production").lower() != "production":
+        @app.post("/admin/dev/mock/session")
+        def admin_dev_mock_session():
+            # Create a synthetic session with the current user as commander1 and a fake second commander
+            uid = session.get('uid')
+            if not uid:
+                return jsonify({"ok": False, "error": "not_authenticated"}), 401
+            provider, external_id = uid.split(":", 1)
+            from app.db import session_scope
+            from app.models import Session, SessionPlayer
+            from datetime import datetime as _dt
+            mock_id = f"Dev:TP:{provider}:{external_id}"
+            with session_scope() as db:
+                row = db.get(Session, mock_id)
+                if row is None:
+                    row = Session(id=mock_id, source="dev", name="Dev Team Picker", state="PreGame", tps=30, version="dev", map_file="vsr4pool", mod_id="0", attributes={"max_players": 8}, started_at=_dt.utcnow())
+                    db.add(row)
+                row.last_seen_at = _dt.utcnow()
+                row.ended_at = None
+                # Seed players: two commanders as hosts (slots 1 and 6) + 6 others with fake steam ids
+                def upsert_player(slot: int, team_id: int | None, is_host: bool, name: str, steam_id: str | None):
+                    from sqlalchemy import select as _select
+                    existing = db.execute(_select(SessionPlayer).where(SessionPlayer.session_id == row.id, SessionPlayer.slot == slot)).scalar_one_or_none()
+                    stats = {"name": name}
+                    if steam_id:
+                        stats["steam_id"] = steam_id
+                    if existing is None:
+                        db.add(SessionPlayer(session_id=row.id, slot=slot, team_id=team_id, is_host=is_host, stats=stats))
+                    else:
+                        existing.team_id = team_id
+                        existing.is_host = is_host
+                        existing.stats = stats
+                upsert_player(1, 1, True, "Commander 1", external_id if provider == "steam" else None)
+                upsert_player(6, 2, True, "Commander 2", "76561199000000000")
+                # Add 6 pickable players with fake steam ids
+                for i in range(2, 6):
+                    upsert_player(i, None, False, f"Player {i}", f"7656119900000000{i}")
+                for i in range(7, 9):
+                    upsert_player(i, None, False, f"Player {i}", f"765611990000000{i}")
+            try:
+                if socketio:
+                    socketio.emit("sessions:update", {"id": mock_id}, broadcast=True)
+            except Exception:
+                pass
+            return jsonify({"ok": True, "session_id": mock_id})
+
     return app
 
 
