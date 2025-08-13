@@ -14,6 +14,8 @@
   let isWarmup = true;
   setTimeout(()=>{ isWarmup = false; }, 8000);
   // DaisyUI modal buttons are handled in app/static/js/app.js
+  // Track site-online Steam IDs for inline indicators in game cards
+  let siteOnlineIds = new Set();
 
   function drawHistory(points){
     const c = document.getElementById('histCanvas');
