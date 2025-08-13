@@ -34,8 +34,13 @@ function Ensure-DBSchema {
   $py = Join-Path $repoRoot ".venv/Scripts/python.exe"
   Write-Info "Ensuring database schema"
   $dbu = $env:DATABASE_URL
+  $envPath = Join-Path $repoRoot ".env"
   if (-not $dbu) {
-    Write-Warn "DATABASE_URL is not set. Create a .env with local settings (see TECHNICAL_SPEC.md §10) or export DATABASE_URL."
+    if (Test-Path $envPath) {
+      Write-Info "No DATABASE_URL in shell; .env detected — the app will load it at runtime (see TECHNICAL_SPEC.md §10)."
+    } else {
+      Write-Warn "DATABASE_URL is not set and no .env found. Create a .env (see TECHNICAL_SPEC.md §10) or export DATABASE_URL."
+    }
   }
   try {
     & $py -c "from app.migrate import create_all, ensure_alter_tables; create_all(); ensure_alter_tables(); print('[schema] ready')"
