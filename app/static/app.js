@@ -196,6 +196,9 @@
     const data = await res.json();
     if ((data.sessions||[]).length > 0) firstDataReceived = true;
     render(data);
+    // mark connection healthy when REST responds
+    connDot.className = 'dot ok';
+    connText.textContent = 'Live';
   }
 
   let sse;
@@ -230,19 +233,8 @@
       // eslint-disable-next-line no-undef
       socket = io('/', { transports: ['websocket', 'polling'] });
       socket.on('connect', ()=>{ connDot.className='dot ok'; connText.textContent='Live'; });
-      socket.on('sessions:update', (payload)=>{
-        if ((payload.sessions||[]).length > 0) firstDataReceived = true;
-        const req = new URL(url(), window.location);
-        const state = (req.searchParams.get('state')||'').toLowerCase();
-        const min = +(req.searchParams.get('min_players')||0);
-        const q = (req.searchParams.get('q')||'').toLowerCase();
-        let sessions = payload.sessions || [];
-        if (state) sessions = sessions.filter(s => (s.state||'').toLowerCase()===state);
-        if (min>0) sessions = sessions.filter(s => (s.players||[]).length>=min);
-        if (q) sessions = sessions.filter(s => (s.name||'').toLowerCase().includes(q) || (s.players||[]).some(p => (p.name||'').toLowerCase().includes(q)));
-        render({sessions});
-        renderOnlineSidebar();
-      });
+      socket.on('sessions:update', ()=>{ fetchOnce(); renderOnlineSidebar(); });
+      socket.on('connect_error', ()=>{ connDot.className='dot err'; connText.textContent='Reconnecting…'; });
       socket.on('presence:update', ()=>{ renderOnlineSidebar(); });
       socket.on('disconnect', ()=>{ connDot.className='dot err'; connText.textContent='Reconnecting…'; });
     } catch {}
