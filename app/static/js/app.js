@@ -1,4 +1,215 @@
 // Minimal JS bridge for DaisyUI modal and profile/logout actions
+// Main page logic (sessions grid, SSE/WS, Team Picker modal)
+(()=>{
+  const grid = document.getElementById('grid');
+  const fState = document.getElementById('fState');
+  const fMin = document.getElementById('fMin');
+  const fQ = document.getElementById('fQ');
+  const connDot = document.getElementById('connDot');
+  const connText = document.getElementById('connText');
+  const fMod = document.getElementById('fMod');
+  const daisyModal = document.getElementById('appModal');
+  const mTitle = document.getElementById('appModalTitle');
+  const mBody = document.getElementById('appModalBody');
+  let firstDataReceived = false;
+  let isWarmup = true;
+  setTimeout(()=>{ isWarmup = false; }, 8000);
+
+  function render(data) {
+    if (!grid) return;
+    grid.innerHTML = '';
+    const sessions = data.sessions || [];
+    if (sessions.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'col-span-full';
+      empty.setAttribute('aria-live', 'polite');
+      const msg = isWarmup ? 'Loading sessions…' : 'No sessions online right now.';
+      empty.innerHTML = `<div class="alert alert-info bg-base-200 border border-base-300"><span>${msg}</span></div>`;
+      grid.appendChild(empty);
+      return;
+    }
+    sessions.forEach(s => {
+      const card = document.createElement('div');
+      card.className = 'card bg-base-200 border border-base-300 cursor-pointer p-3';
+      const title = (((s.level && s.level.name) || '') + ' ' + ((s.name || ''))).toLowerCase();
+      const isFFA = /(ffa|deathmatch|\bdm\b)/.test(title);
+      const playersHtml = `
+        <div class="mt-2 text-sm leading-6">
+          ${(s.players||[]).map(p => {
+            const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
+            const isStar = (p.is_host || p.slot===1 || p.slot===6);
+            const avatar = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" alt="" class="w-4 h-4 rounded-full mr-2 flex-none"/>` : '';
+            const score = (p.score!=null? ` <span class=\"opacity-70 text-xs\">(score ${p.score})</span>` : '');
+            return `<div class="flex items-center truncate">${isStar?'<span class=\"mr-2\">★</span>':''}${avatar}<span class="truncate">${nick}</span>${score}</div>`;
+          }).join('')}
+        </div>`;
+      const teamsHtml = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2 items-stretch">
+          <div class="card bg-base-100 border border-base-300 h-full"><div class="card-body p-3 h-full">
+            <h4 class="text-sm opacity-70 mb-1">Team 1</h4>
+                        ${(s.players||[]).filter(p=>!p.team_id || p.team_id===1).map(p => {
+                          const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
+                          const isStar = (p.is_host || p.slot===1 || p.slot===6);
+                          const avatar = (p.steam && p.steam.avatar) ? `<img src=\"${p.steam.avatar}\" alt=\"\" class=\"w-4 h-4 rounded-full mr-2 flex-none\"/>` : '';
+                          const score = (p.score!=null? ` <span class=\\"opacity-70 text-xs\\">(score ${p.score})</span>` : '');
+                          return `<div class=\"flex items-center truncate\">${isStar?'<span class=\\"mr-2\\">★</span>':''}${avatar}<span class=\"truncate\">${nick}</span>${score}</div>`;
+                        }).join('') || '<span class="opacity-70 text-xs">Open</span>'}
+            <div class="grow"></div>
+          </div></div>
+          <div class="card bg-base-100 border border-base-300 h-full"><div class="card-body p-3 h-full">
+            <h4 class="text-sm opacity-70 mb-1">Team 2</h4>
+                        ${(s.players||[]).filter(p=>p.team_id===2).map(p => {
+                          const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
+                          const isStar = (p.is_host || p.slot===1 || p.slot===6);
+                          const avatar = (p.steam && p.steam.avatar) ? `<img src=\"${p.steam.avatar}\" alt=\"\" class=\"w-4 h-4 rounded-full mr-2 flex-none\"/>` : '';
+                          const score = (p.score!=null? ` <span class=\\"opacity-70 text-xs\\">(score ${p.score})</span>` : '');
+                          return `<div class=\"flex items-center truncate\">${isStar?'<span class=\\"mr-2\\">★</span>':''}${avatar}<span class=\"truncate\">${nick}</span>${score}</div>`;
+                        }).join('') || '<span class="opacity-70 text-xs">Open</span>'}
+            <div class="grow"></div>
+          </div></div>
+        </div>`;
+      const a = s.attributes || {};
+      card.innerHTML = `
+        <div class="flex flex-wrap gap-2 items-center">
+          <span class="${((s.state||'')==='InGame') ? 'badge-accent-soft' : 'badge-soft'}">${s.state || 'Unknown'}</span>
+          ${s.nat_type ? `<span class=\"badge-soft\">${s.nat_type}</span>` : ''}
+          ${a.worst_ping!=null ? `<span class=\"badge-soft\" title=\"Worst ping seen\">Worst ${a.worst_ping}ms</span>` : ''}
+          ${a.game_mode ? `<span class=\"badge-soft\" title=\"Game mode\">${a.game_mode}</span>` : ''}
+          ${a.time_limit!=null ? `<span class=\"badge-soft\" title=\"Time limit\">TL ${a.time_limit}m</span>` : ''}
+          ${a.kill_limit!=null ? `<span class=\"badge-soft\" title=\"Kill limit\">KL ${a.kill_limit}</span>` : ''}
+          <span class="ml-auto text-xs opacity-70">${(s.players||[]).length}${(s.attributes && s.attributes.max_players)? '/'+s.attributes.max_players : ''} players</span>
+        </div>
+        <div class="mt-1 card bg-base-100 border border-base-300">
+          <div class="card-body p-3">
+            <h3 class="text-lg">${(s.name || s.id)}</h3>
+            <div class="text-xs opacity-70">${s.id}</div>
+            <div class="text-xs opacity-70">${s.level && s.level.name ? ('Map: ' + s.level.name) : (s.map_file? ('Map: ' + s.map_file) : '')}
+              ${s.mod_details && (s.mod_details.name || s.mod) ? (' • Mod: ' + (s.mod_details.url ? (`<a class=\"link\" href=\"${s.mod_details.url}\" target=\"_blank\" rel=\"noopener\">${s.mod_details.name || s.mod}</a>`) : (s.mod_details.name || s.mod))) : ''}
+            </div>
+          </div>
+        </div>
+        ${s.level && s.level.image ? `<div class="mt-2 card bg-base-100 border border-base-300"><div class="card-body p-3"><img alt="map" class="map-thumb" src="${s.level.image}"/></div></div>` : ''}
+        ${isFFA ? playersHtml : teamsHtml}
+      `;
+      card.onclick = async () => {
+        try {
+          const res = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`);
+          const data = await res.json();
+          mTitle.textContent = 'Team Picker';
+          const sess = data && data.session;
+          if (!sess) {
+            mBody.innerHTML = `<div class="space-y-3">
+              <div class="text-sm opacity-80">No Team Picker is active for this session.</div>
+              <button id="tpStart" class="btn btn-sm btn-primary">Start Team Picker</button>
+            </div>`;
+            daisyModal.showModal();
+            const btn = document.getElementById('tpStart');
+            if (btn) btn.onclick = async ()=>{
+              try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/start`, {method:'POST', headers:{'Content-Type':'application/json'}}); } catch {}
+              try { const r = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j = await r.json(); renderTP(j.session); } catch {}
+            };
+            return;
+          }
+          renderTP(sess);
+          daisyModal.showModal();
+        } catch {}
+      };
+
+      function renderTP(tp){
+        const picks = (tp.picks||[]).map(p=>`<div class="flex items-center justify-between text-sm"><span class="opacity-70">#${p.order}</span><span>Team ${p.team_id}</span><span class="truncate">${(p.player&&p.player.steam&&p.player.steam.nickname)||p.player.steam_id}</span></div>`).join('');
+        const parts = (tp.participants||[]).map(p=>`<span class="badge-soft">${p.role}: ${p.id}</span>`).join(' ');
+        const coin = tp.coin_winner_team? `<span class="badge-soft">Coin: Team ${tp.coin_winner_team}</span>` : '<button id="tpCoin" class="btn btn-xs">Coin toss</button>';
+        mBody.innerHTML = `
+          <div class="space-y-3">
+            <div class="flex gap-2 items-center text-sm"><span class="badge-soft">${tp.state}</span>${coin}${parts}</div>
+            <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">${picks || '<span class="opacity-70 text-sm">No picks yet</span>'}</div></div>
+            <div class="flex gap-2">
+              <input id="tpSteamId" class="input input-sm input-bordered" placeholder="SteamID64 to pick" />
+              <button id="tpPick" class="btn btn-sm btn-primary">Pick</button>
+              <button id="tpFinalize" class="btn btn-sm">Finalize</button>
+            </div>
+          </div>`;
+        const btnCoin = document.getElementById('tpCoin');
+        if (btnCoin) btnCoin.onclick = async ()=>{ try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/coin_toss`, {method:'POST'}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {} };
+        const btnPick = document.getElementById('tpPick');
+        if (btnPick) btnPick.onclick = async ()=>{ const sid = document.getElementById('tpSteamId').value.trim(); if(!sid) return; try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/pick`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({player_steam_id: sid})}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {} };
+        const btnFin = document.getElementById('tpFinalize');
+        if (btnFin) btnFin.onclick = async ()=>{ try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/finalize`, {method:'POST'}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {} };
+      }
+
+      grid.appendChild(card);
+    });
+  }
+
+  function url() {
+    const p = new URLSearchParams();
+    if (fState && fState.value) p.set('state', fState.value);
+    if (fMin && fMin.value && +fMin.value>0) p.set('min_players', fMin.value);
+    if (fQ && fQ.value) p.set('q', fQ.value);
+    if (fMod && fMod.value) p.set('mod', fMod.value);
+    return `/api/v1/sessions/current?${p.toString()}`;
+  }
+
+  async function fetchOnce() {
+    try {
+      const res = await fetch(url());
+      const data = await res.json();
+      if ((data.sessions||[]).length > 0) firstDataReceived = true;
+      render(data);
+      if (connDot) connDot.className = 'dot ok';
+      if (connText) connText.textContent = 'Live';
+    } catch {}
+  }
+
+  let sse;
+  let sseLive = false;
+  let socket;
+  function startSSE(){
+    if (!window.EventSource) return;
+    if (sse) sse.close();
+    sse = new EventSource('/api/v1/stream/sessions');
+    sse.onopen = ()=>{ sseLive = true; if (connDot) connDot.className='dot ok'; if (connText) connText.textContent='Live'; };
+    sse.onmessage = (ev) => {
+      if (connDot) connDot.className = 'dot ok';
+      if (connText) connText.textContent = 'Live';
+      const payload = JSON.parse(ev.data);
+      if ((payload.sessions||[]).length > 0) firstDataReceived = true;
+      const req = new URL(url(), window.location);
+      const state = req.searchParams.get('state');
+      const min = +(req.searchParams.get('min_players')||0);
+      const q = (req.searchParams.get('q')||'').toLowerCase();
+      let sessions = payload.sessions || [];
+      if (state) sessions = sessions.filter(s => (s.state||'').toLowerCase()===state.toLowerCase());
+      if (min>0) sessions = sessions.filter(s => (s.players||[]).length>=min);
+      if (q) sessions = sessions.filter(s => {
+        if ((s.name||'').toLowerCase().includes(q)) return true;
+        return (s.players||[]).some(p => (p.name||'').toLowerCase().includes(q));
+      });
+      render({sessions});
+    };
+    sse.onerror = ()=>{ sseLive = false; if (connDot) connDot.className = 'dot err'; if (connText) connText.textContent = 'Reconnecting…'; sse && sse.close(); setTimeout(startSSE, 5000); };
+  }
+
+  function startWS(){
+    try {
+      // eslint-disable-next-line no-undef
+      socket = io('/', { transports: ['websocket', 'polling'] });
+      socket.on('connect', ()=>{ if (!sseLive) { if (connDot) connDot.className='dot ok'; if (connText) connText.textContent='Live'; } });
+      socket.on('sessions:update', ()=>{ fetchOnce(); });
+      socket.on('connect_error', ()=>{ if (!sseLive) { if (connDot) connDot.className='dot err'; if (connText) connText.textContent='Reconnecting…'; } });
+      socket.on('disconnect', ()=>{ if (!sseLive) { if (connDot) connDot.className='dot err'; if (connText) connText.textContent='Reconnecting…'; } });
+    } catch {}
+  }
+
+  if (fState) fState.addEventListener('change', fetchOnce);
+  if (fMin) fMin.addEventListener('change', fetchOnce);
+  if (fQ) fQ.addEventListener('input', fetchOnce);
+  if (fMod) fMod.addEventListener('change', fetchOnce);
+  fetchOnce();
+  setTimeout(startWS, 200);
+  startSSE();
+})();
+
 (function(){
   const modal = document.getElementById('appModal');
   const title = document.getElementById('appModalTitle');
