@@ -177,7 +177,7 @@
         const active = sid && siteMap.has(sid);
         const dot = active ? '<span class="dot ok mr-2"></span>' : '<span class="dot mr-2"></span>';
         const profile = (p.steam && p.steam.profile) ? p.steam.profile : (sid ? `https://steamcommunity.com/profiles/${sid}/` : '#');
-        return `<div class="flex items-center">${dot}${avatar}<a class="truncate link" href="${profile}" target="_blank" rel="noopener">${name}</a></div>`;
+        return `<div class="flex items-center">${dot}${avatar}<a class="truncate no-underline" href="${profile}" target="_blank" rel="noopener">${name}</a></div>`;
       }).join('');
     } catch {
       box.innerHTML = '<span class="muted">Unavailable</span>';
