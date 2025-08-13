@@ -27,11 +27,9 @@ def create_app() -> Flask:
     # Initialize Socket.IO (Redis message queue for cross-process emit)
     global socketio
     if socketio is None:
-        socketio = SocketIO(
-            cors_allowed_origins=settings.ws_allowed_origins or "*",
-            message_queue=settings.redis_url or None,
-            async_mode="eventlet"
-        )
+        socketio = SocketIO(cors_allowed_origins=settings.ws_allowed_origins or "*",
+                            message_queue=settings.redis_url or None,
+                            async_mode="eventlet")
         socketio.init_app(app)
 
     @app.get("/healthz")

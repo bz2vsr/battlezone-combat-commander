@@ -5,7 +5,8 @@ param(
   [string]$Action = 'start',
   [int]$WebPort = 5000,
   [switch]$NoDocker,
-  [switch]$Reinstall
+  [switch]$Reinstall,
+  [switch]$Realtime
 )
 
 Set-StrictMode -Version Latest
@@ -56,15 +57,19 @@ function Start-Services {
   $worker = Start-Process -FilePath $py -ArgumentList @("-m","worker.runner") -WorkingDirectory $repoRoot -PassThru -WindowStyle Hidden -RedirectStandardOutput $workerOut -RedirectStandardError $workerErr
   Set-Content -Path (Join-Path $tmpDir 'worker.pid') -Value $worker.Id
 
-  # Ensure env for SocketIO
-  if (-not $env:REDIS_URL) { $env:REDIS_URL = "redis://localhost:6379/0" }
-  if (-not $env:WS_ALLOWED_ORIGINS) { $env:WS_ALLOWED_ORIGINS = "http://localhost:$WebPort" }
-
-  Write-Info "Starting web (SocketIO) (http://127.0.0.1:$WebPort/)"
   $webOut = Join-Path $tmpDir 'web.out.log'
   $webErr = Join-Path $tmpDir 'web.err.log'
-  $env:PORT = "$WebPort"
-  $web = Start-Process -FilePath $py -ArgumentList @("-m","app.run_socketio") -WorkingDirectory $repoRoot -PassThru -WindowStyle Hidden -RedirectStandardOutput $webOut -RedirectStandardError $webErr
+  if ($Realtime) {
+    # Ensure env for SocketIO
+    if (-not $env:REDIS_URL) { $env:REDIS_URL = "redis://127.0.0.1:6379/0" }
+    if (-not $env:WS_ALLOWED_ORIGINS) { $env:WS_ALLOWED_ORIGINS = "http://localhost:$WebPort" }
+    $env:PORT = "$WebPort"
+    Write-Info "Starting web (SocketIO) (http://127.0.0.1:$WebPort/)"
+    $web = Start-Process -FilePath $py -ArgumentList @("-m","app.run_socketio") -WorkingDirectory $repoRoot -PassThru -WindowStyle Hidden -RedirectStandardOutput $webOut -RedirectStandardError $webErr
+  } else {
+    Write-Info "Starting web (Flask dev) (http://127.0.0.1:$WebPort/)"
+    $web = Start-Process -FilePath $py -ArgumentList @("-m","flask","--app","app.main","run","--port","$WebPort") -WorkingDirectory $repoRoot -PassThru -WindowStyle Hidden -RedirectStandardOutput $webOut -RedirectStandardError $webErr
+  }
   Set-Content -Path (Join-Path $tmpDir 'web.pid') -Value $web.Id
 
   Start-Sleep -Seconds 1
@@ -92,7 +97,7 @@ function Stop-Services {
     Remove-Item $webPidPath -ErrorAction SilentlyContinue
   }
   # Fallback: kill stray processes by command line match
-  $procs = Get-CimInstance Win32_Process | Where-Object { ($_.CommandLine -match 'worker.runner') -or ($_.CommandLine -match 'flask --app app.main run') }
+  $procs = Get-CimInstance Win32_Process | Where-Object { ($_.CommandLine -match 'worker.runner') -or ($_.CommandLine -match 'flask --app app.main run') -or ($_.CommandLine -match 'app.run_socketio') }
   foreach ($p in $procs) { try { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue } catch {} }
   Write-Info "Services stopped"
 }

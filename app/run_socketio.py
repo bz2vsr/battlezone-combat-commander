@@ -1,4 +1,9 @@
 import os
+
+# Apply eventlet monkey patching BEFORE importing the app/socketio
+import eventlet
+eventlet.monkey_patch()
+
 from app.main import app, socketio
 
 
