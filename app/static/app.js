@@ -84,9 +84,9 @@
           ${(s.players||[]).map(p => {
             const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
             const isStar = (p.is_host || p.slot===1 || p.slot===6);
-            const avatar = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" alt="" class="w-4 h-4 rounded-full mr-2 shrink-0"/>` : '';
+            const avatar = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" alt="" class="w-4 h-4 rounded-full shrink-0"/>` : '';
             const score = (p.score!=null? ` <span class=\"opacity-70 text-xs\">(score ${p.score})</span>` : '');
-            return `<div class=\"flex items-center gap-2 truncate\">${isStar?'<span>★</span>':''}${avatar}<span class=\"truncate\">${nick}</span>${score}</div>`;
+            return `<div class=\"flex items-center gap-1 truncate\">${isStar?'<span>★</span>':''}${avatar}<span class=\"truncate\">${nick}</span>${score}</div>`;
           }).join('')}
         </div>`;
       const teamsHtml = `
@@ -96,9 +96,9 @@
             ${(s.players||[]).filter(p=>!p.team_id || p.team_id===1).map(p => {
               const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
               const isStar = (p.is_host || p.slot===1 || p.slot===6);
-              const avatar = (p.steam && p.steam.avatar) ? `<img src=\"${p.steam.avatar}\" alt=\"\" class=\"w-4 h-4 rounded-full mr-2 shrink-0\"/>` : '';
+              const avatar = (p.steam && p.steam.avatar) ? `<img src=\"${p.steam.avatar}\" alt=\"\" class=\"w-4 h-4 rounded-full shrink-0\"/>` : '';
               const score = (p.score!=null? ` <span class=\\"opacity-70 text-xs\\">(score ${p.score})</span>` : '');
-              return `<div class=\"flex items-center gap-2 truncate\">${isStar?'<span>★</span>':''}${avatar}<span class=\"truncate\">${nick}</span>${score}</div>`;
+              return `<div class=\"flex items-center gap-1 truncate\">${isStar?'<span>★</span>':''}${avatar}<span class=\"truncate\">${nick}</span>${score}</div>`;
             }).join('') || '<span class="opacity-70 text-xs">Open</span>'}
             <div class="grow"></div>
           </div></div>
@@ -107,9 +107,9 @@
             ${(s.players||[]).filter(p=>p.team_id===2).map(p => {
               const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
               const isStar = (p.is_host || p.slot===1 || p.slot===6);
-              const avatar = (p.steam && p.steam.avatar) ? `<img src=\"${p.steam.avatar}\" alt=\"\" class=\"w-4 h-4 rounded-full mr-2 shrink-0\"/>` : '';
+              const avatar = (p.steam && p.steam.avatar) ? `<img src=\"${p.steam.avatar}\" alt=\"\" class=\"w-4 h-4 rounded-full shrink-0\"/>` : '';
               const score = (p.score!=null? ` <span class=\\"opacity-70 text-xs\\">(score ${p.score})</span>` : '');
-              return `<div class=\"flex items-center gap-2 truncate\">${isStar?'<span>★</span>':''}${avatar}<span class=\"truncate\">${nick}</span>${score}</div>`;
+              return `<div class=\"flex items-center gap-1 truncate\">${isStar?'<span>★</span>':''}${avatar}<span class=\"truncate\">${nick}</span>${score}</div>`;
             }).join('') || '<span class="opacity-70 text-xs">Open</span>'}
             <div class="grow"></div>
           </div></div>
