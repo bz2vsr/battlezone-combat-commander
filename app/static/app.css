@@ -1,6 +1,6 @@
 /* Legacy CSS intentionally cleared; DaisyUI/Tailwind provide styling. Keep only necessary small helpers. */
 .dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; background:#586173; }
-.dot.sm { width:6px; height:6px; margin-right:4px; }
+.dot.sm { width:6px; height:6px; margin-right:4px; display:inline-block; }
 .dot.edge { margin-left:8px; }
 .dot.ok { background:#22c55e; }
 .dot.err { background:#ef4444; }
