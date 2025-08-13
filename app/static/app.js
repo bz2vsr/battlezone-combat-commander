@@ -91,7 +91,14 @@
             const dot = online ? '<span class="dot ok sm"></span>' : '';
             const avatar = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" alt="" class="w-4 h-4 rounded-full mr-2 flex-none"/>` : '';
             const score = (p.score!=null? ` <span class=\"opacity-70 text-xs\">(score ${p.score})</span>` : '');
-            return `<div class="flex items-center truncate w-full">${isStar?'<span class=\"mr-2\">★</span>':''}${avatar}<span class=\"truncate flex-1\">${nick}</span>${score}${dot?`<span class=\\\"ml-auto pl-2\\\">${dot}</span>`:''}</div>`;
+            return `<div class="flex items-center justify-between w-full">
+              <div class="flex items-center min-w-0">
+                ${isStar?'<span class=\"mr-2\">★</span>':''}
+                ${avatar}
+                <span class="truncate">${nick}</span>${score}
+              </div>
+              ${dot?`<span class=\\\"pl-2 flex-none\\\">${dot}</span>`:''}
+            </div>`;
           }).join('')}
         </div>`;
       const teamsHtml = `
@@ -106,7 +113,7 @@
                           const dot = online ? '<span class=\"dot ok sm\"></span>' : '';
                           const avatar = (p.steam && p.steam.avatar) ? `<img src=\"${p.steam.avatar}\" alt=\"\" class=\"w-4 h-4 rounded-full mr-2 flex-none\"/>` : '';
                           const score = (p.score!=null? ` <span class=\\"opacity-70 text-xs\\">(score ${p.score})</span>` : '');
-                          return `<div class=\"flex items-center truncate w-full\">${isStar?'<span class=\\\"mr-2\\\">★</span>':''}${avatar}<span class=\\\"truncate flex-1\\\">${nick}</span>${score}${dot?`<span class=\\\\\\\"ml-auto pl-2\\\\\\\">${dot}</span>`:''}</div>`;
+                          return `<div class=\"flex items-center justify-between w-full\">\n                            <div class=\"flex items-center min-w-0\">\n                              ${isStar?'<span class=\\\"mr-2\\\">★</span>':''}\n                              ${avatar}\n                              <span class=\\\"truncate\\\">${nick}</span>${score}\n                            </div>\n                            ${dot?`<span class=\\\\\\\"pl-2 flex-none\\\\\\\">${dot}</span>`:''}\n                          </div>`;
                         }).join('') || '<span class="opacity-70 text-xs">Open</span>'}
             <div class="grow"></div>
           </div></div>
@@ -120,7 +127,7 @@
                           const dot = online ? '<span class=\"dot ok sm\"></span>' : '';
                           const avatar = (p.steam && p.steam.avatar) ? `<img src=\"${p.steam.avatar}\" alt=\"\" class=\"w-4 h-4 rounded-full mr-2 flex-none\"/>` : '';
                           const score = (p.score!=null? ` <span class=\\"opacity-70 text-xs\\">(score ${p.score})</span>` : '');
-                          return `<div class=\"flex items-center truncate w-full\">${isStar?'<span class=\\\"mr-2\\\">★</span>':''}${avatar}<span class=\\\"truncate flex-1\\\">${nick}</span>${score}${dot?`<span class=\\\\\\\"ml-auto pl-2\\\\\\\">${dot}</span>`:''}</div>`;
+                          return `<div class=\"flex items-center justify-between w-full\">\n                            <div class=\"flex items-center min-w-0\">\n                              ${isStar?'<span class=\\\"mr-2\\\">★</span>':''}\n                              ${avatar}\n                              <span class=\\\"truncate\\\">${nick}</span>${score}\n                            </div>\n                            ${dot?`<span class=\\\\\\\"pl-2 flex-none\\\\\\\">${dot}</span>`:''}\n                          </div>`;
                         }).join('') || '<span class="opacity-70 text-xs">Open</span>'}
             <div class="grow"></div>
           </div></div>
