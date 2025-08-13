@@ -245,7 +245,8 @@
   fQ.addEventListener('input', fetchOnce);
   fMod.addEventListener('change', fetchOnce);
   fetchOnce();
-  startWS();
+  // Defer WS init slightly to ensure client script is present
+  setTimeout(startWS, 200);
   startSSE();
   // history chart removed from main page for now
   renderOnlineSidebar();
