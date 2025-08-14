@@ -101,6 +101,7 @@ function Start-Services {
     # Ensure env for SocketIO
     if (-not $env:REDIS_URL) { $env:REDIS_URL = "redis://127.0.0.1:6379/0" }
     if (-not $env:WS_ALLOWED_ORIGINS) { $env:WS_ALLOWED_ORIGINS = "http://localhost:$WebPort" }
+    $env:REALTIME = "true"
     $env:PORT = "$WebPort"
     Write-Info "Starting web (SocketIO) (http://127.0.0.1:$WebPort/)"
     $web = Start-Process -FilePath $py -ArgumentList @("-m","app.run_socketio") -WorkingDirectory $repoRoot -PassThru -WindowStyle Hidden -RedirectStandardOutput $webOut -RedirectStandardError $webErr

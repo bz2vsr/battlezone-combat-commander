@@ -7,6 +7,7 @@ from app.store import get_mod_catalog
 from app.migrate import create_all, ensure_alter_tables
 from app.config import settings
 from flask_socketio import SocketIO
+import os
 
 
 socketio: SocketIO | None = None
@@ -16,6 +17,8 @@ def create_app() -> Flask:
     app = Flask(__name__)
     app.config['SECRET_KEY'] = settings.secret_key
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+        # Expose realtime flag to templates/JS (set by dev.ps1 -Realtime)
+        app.config['REALTIME_ENABLED'] = bool(os.getenv('REALTIME'))
 
     # Ensure DB schema exists (idempotent)
     try:

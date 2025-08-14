@@ -191,6 +191,7 @@
   }
 
   function startWS(){
+    try { if (typeof window.__REALTIME__ === 'string' && window.__REALTIME__ !== 'true') return; } catch {}
     try {
       // eslint-disable-next-line no-undef
       socket = io('/', { transports: ['websocket', 'polling'] });
