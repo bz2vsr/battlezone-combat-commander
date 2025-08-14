@@ -266,19 +266,7 @@
         const btnRestart = document.getElementById('tpRestart'); if (btnRestart) { if (!canAct) btnRestart.disabled = true; btnRestart.onclick = async ()=>{ btnRestart.disabled=true; try { const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/restart`, {method:'POST', credentials:'same-origin'}); if(!resp.ok){ const err=document.getElementById('tpErr'); if(err){ err.textContent = resp.status===401?'Please sign in to restart Team Picker.': (resp.status===403?'Only commanders can restart Team Picker.':'Unable to restart.'); } btnRestart.disabled=false; return;} } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); window.__RENDER_TP && window.__RENDER_TP(j.session);} catch {} }; }
         const btnRand = document.getElementById('tpPickRandom'); if (btnRand) { if (!canAct) btnRand.disabled = true; btnRand.onclick = async ()=>{ if (!eligible || eligible.length===0) return; btnRand.disabled = true; const pick = eligible[Math.floor(Math.random()*eligible.length)]; try { const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/pick`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body: JSON.stringify({player_steam_id: pick.steam_id})}); if(!resp.ok){ const err=document.getElementById('tpErr'); if(err){ err.textContent = resp.status===401?'Please sign in to pick.': (resp.status===403?'It is not your turn to pick.':'Unable to pick.'); } btnRand.disabled=false; return;} } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); window.__RENDER_TP && window.__RENDER_TP(j.session);} catch {} }; }
 
-        // If single-user testing and it's the other commander's turn, auto-pick after a short delay
-        try {
-          const yourRole = tp.your_role;
-          const nextTeam = tp.next_team;
-          if (tp.coin_winner_team && eligible.length > 0) {
-            if ((yourRole==='commander1' && nextTeam===2) || (yourRole==='commander2' && nextTeam===1) || (!yourRole && nextTeam===2)) {
-              setTimeout(async ()=>{
-                try { await fetch(`/admin/dev/team_picker/${encodeURIComponent(s.id)}/auto_pick`, {method:'POST'}); } catch {}
-                try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {}
-              }, 800);
-            }
-          }
-        } catch {}
+        // Auto-pick removed
       }
       grid.appendChild(card);
     });
