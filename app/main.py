@@ -490,9 +490,13 @@ def create_app() -> Flask:
         cmd1 = payload.get("commander1_id")
         cmd2 = payload.get("commander2_id")
         from app.db import session_scope
-        from app.models import TeamPickSession, TeamPickParticipant, SessionPlayer
+        from app.models import TeamPickSession, TeamPickParticipant, SessionPlayer, Session
         from sqlalchemy import select as _select
         with session_scope() as db:
+            # Only allow for PreGame sessions
+            sess_row = db.get(Session, session_id)
+            if not sess_row or (sess_row.state or '').lower() != 'pregame'.lower():
+                return jsonify({"ok": False, "error": "not_pregame"}), 400
             # Infer commanders if not provided: use slots 1 and 6 steam_ids if available
             if not cmd1 or not cmd2:
                 rows = db.execute(
@@ -680,6 +684,17 @@ def create_app() -> Flask:
                 from datetime import datetime as _dt
                 tps.state = "final"
                 tps.closed_at = _dt.utcnow()
+            else:
+                # Dev convenience: in mock sessions, auto-accept the other commander
+                if (settings.flask_env or "production").lower() != "production" and str(session_id).startswith("Dev:TP:"):
+                    if part.role == "commander1":
+                        tps.accepted_by_commander2 = True
+                    elif part.role == "commander2":
+                        tps.accepted_by_commander1 = True
+                    if tps.accepted_by_commander1 and tps.accepted_by_commander2:
+                        from datetime import datetime as _dt
+                        tps.state = "final"
+                        tps.closed_at = _dt.utcnow()
         try:
             if socketio:
                 socketio.emit("team_picker:update", {"session_id": session_id, "action": "finalize"}, room=f"team_picker:{session_id}", broadcast=True)

@@ -139,9 +139,14 @@
           mTitle.textContent = 'Team Picker';
           const sess = data && data.session;
           if (!sess) {
-            mBody.innerHTML = `<div class="space-y-3">
+            // Gate: require PreGame and both commanders signed in
+            const isPre = (s.state === 'PreGame');
+            const needTwo = '<div class="text-xs opacity-70">Team Picker requires both commanders to be signed in.</div>';
+            mBody.innerHTML = `<div class="space-y-2">
               <div class="text-sm opacity-80">No Team Picker is active for this session.</div>
-              <button id="tpStart" class="btn btn-sm btn-primary">Start Team Picker</button>
+              ${!isPre?'<div class="alert bg-base-200 border border-base-300 text-xs">Team Picker is only available in PreGame.</div>':''}
+              ${needTwo}
+              <div><button id="tpStart" class="btn btn-sm btn-primary" ${!isPre?'disabled':''}>Start Team Picker</button></div>
             </div>`;
             daisyModal.showModal();
             const btn = document.getElementById('tpStart');
@@ -195,6 +200,7 @@
           <div class="space-y-3">
             ${commandersTop}
             <div class="flex gap-2 items-center text-sm"><span class="badge-soft">${tp.state}</span>${coin}<span class="text-xs opacity-70">${tp.next_team?`Team ${tp.next_team}'s turn`:(!tp.coin_winner_team?'Run coin toss to begin':'')}</span></div>
+            ${ (tp.accepted && (tp.accepted.commander1 || tp.accepted.commander2) && !(tp.accepted.commander1 && tp.accepted.commander2)) ? `<div class=\"alert bg-base-200 border border-base-300 text-xs\">Waiting for the other commander to finalize…</div>` : ''}
             <div class="alert bg-base-200 border border-base-300 text-xs">${waitingText}</div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">
@@ -331,6 +337,7 @@
   const sbSignOut = document.getElementById('sbSignOut');
   const onlineList = document.getElementById('onlineList');
   let presenceTimer = null;
+  const modalCloseX = document.getElementById('appModalCloseX');
 
   async function fetchMe(){ try { const r = await fetch('/api/v1/me'); return await r.json(); } catch { return {user:null}; } }
 
@@ -342,6 +349,7 @@
     body.innerHTML = `<div class="flex items-center">${avatar}<div><div class="font-bold">${user.display_name||user.id}</div><div class="text-xs opacity-70">${user.provider||'steam'}</div><a class="link" href="${user.profile}" target="_blank" rel="noopener">Open Steam profile</a></div></div>`;
     modal.showModal();
   });
+  if (modalCloseX) modalCloseX.addEventListener('click', ()=>{ document.getElementById('appModal')?.close(); });
 
   if (btnSignout) btnSignout.addEventListener('click', async (e)=>{
     e.preventDefault();
@@ -407,7 +415,10 @@
           }
         }
       } catch {}
-      const players = Array.from(map.values()).sort((a,b)=> (a.name||'').localeCompare(b.name||''));
+      const players = Array.from(map.values()).sort((a,b)=>{
+        if (!!a.signed !== !!b.signed) return a.signed ? -1 : 1;
+        return (a.name||'').localeCompare(b.name||'');
+      });
       if (onlineList) {
         const items = players.map(p=>{
           const av = p.avatar ? `<img src="${p.avatar}" class="tp-avatar-sm mr-2"/>` : '';
