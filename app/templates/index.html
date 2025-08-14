@@ -17,7 +17,14 @@
         <option value="">All</option>
       </select>
     </label>
-    <span class="ml-auto flex items-center text-sm"><span id="connDot" class="status mr-2"></span><span id="connText">Connecting…</span></span>
+    <label class="flex items-center gap-2">Sort
+      <select id="fSort" class="select select-bordered select-sm">
+        <option value="players_desc" selected>Players (desc)</option>
+        <option value="name_asc">Name (A–Z)</option>
+        <option value="state_then_players">State ▸ Players</option>
+      </select>
+    </label>
+    <span class="ml-auto flex items-center text-sm"><span id="connDot" class="dot mr-2"></span><span id="connText">Connecting…</span></span>
     <button id="createMockSession" class="btn btn-sm">Create mock session</button>
   </div>
   <div id="grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>

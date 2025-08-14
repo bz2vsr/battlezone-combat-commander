@@ -15,10 +15,76 @@
   let isWarmup = true;
   setTimeout(()=>{ isWarmup = false; }, 8000);
 
+  // Pending mock session handling
+  let pendingMockSessionId = null;
+
+  function makeSkeletonCard(){
+    const sk = document.createElement('div');
+    sk.id = 'mockLoadingCard';
+    sk.className = 'card bg-base-200 border border-base-300 p-3 animate-pulse';
+    sk.innerHTML = `
+      <div class="h-4 bg-base-300 rounded w-24 mb-3"></div>
+      <div class="card bg-base-100 border border-base-300 mb-2"><div class="card-body p-3">
+        <div class="h-5 bg-base-300 rounded w-2/3 mb-2"></div>
+        <div class="h-3 bg-base-300 rounded w-1/3"></div>
+      </div></div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">
+          <div class="h-4 bg-base-300 rounded w-20 mb-2"></div>
+          <div class="space-y-2">
+            <div class="h-3 bg-base-300 rounded"></div>
+            <div class="h-3 bg-base-300 rounded w-4/5"></div>
+            <div class="h-3 bg-base-300 rounded w-3/5"></div>
+          </div>
+        </div></div>
+        <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">
+          <div class="h-4 bg-base-300 rounded w-20 mb-2"></div>
+          <div class="space-y-2">
+            <div class="h-3 bg-base-300 rounded"></div>
+            <div class="h-3 bg-base-300 rounded w-4/5"></div>
+            <div class="h-3 bg-base-300 rounded w-3/5"></div>
+          </div>
+        </div></div>
+      </div>`;
+    return sk;
+  }
+
+  function compareByName(a, b){
+    const an = ((a.name || a.id || '').toString()).toLowerCase();
+    const bn = ((b.name || b.id || '').toString()).toLowerCase();
+    if (an < bn) return -1; if (an > bn) return 1; return 0;
+  }
+
+  function sortSessions(list){
+    const mode = (document.getElementById('fSort') && document.getElementById('fSort').value) || 'players_desc';
+    const arr = list.slice();
+    const stateOrder = { 'InGame': 0, 'PreGame': 1, 'PostGame': 2 };
+    if (mode === 'name_asc') {
+      arr.sort((a,b)=> compareByName(a,b));
+    } else if (mode === 'state_then_players') {
+      arr.sort((a,b)=>{
+        const sa = stateOrder[a.state] ?? 3;
+        const sb = stateOrder[b.state] ?? 3;
+        if (sa !== sb) return sa - sb;
+        const ca = (a.players||[]).length; const cb = (b.players||[]).length;
+        if (ca !== cb) return cb - ca;
+        return compareByName(a,b);
+      });
+    } else { // players_desc default
+      arr.sort((a,b)=>{
+        const ca = (a.players||[]).length; const cb = (b.players||[]).length;
+        if (ca !== cb) return cb - ca;
+        return compareByName(a,b);
+      });
+    }
+    return arr;
+  }
+
   function render(data) {
     if (!grid) return;
     grid.innerHTML = '';
-    const sessions = data.sessions || [];
+    const sessionsRaw = data.sessions || [];
+    const sessions = sortSessions(sessionsRaw);
     if (sessions.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'col-span-full';
@@ -27,6 +93,10 @@
       empty.innerHTML = `<div class="alert alert-info bg-base-200 border border-base-300"><span>${msg}</span></div>`;
       grid.appendChild(empty);
       return;
+    }
+    // If a mock is pending and not yet present, show a skeleton card at the top
+    if (pendingMockSessionId && !sessions.some(s => s.id === pendingMockSessionId)) {
+      grid.appendChild(makeSkeletonCard());
     }
     sessions.forEach(s => {
       const card = document.createElement('div');
@@ -144,6 +214,11 @@
       }
       grid.appendChild(card);
     });
+    // If the pending mock is now present, clear the placeholder
+    if (pendingMockSessionId && sessions.some(s => s.id === pendingMockSessionId)) {
+      pendingMockSessionId = null;
+      const sk = document.getElementById('mockLoadingCard'); if (sk && sk.parentNode) sk.parentNode.removeChild(sk);
+    }
   }
 
   function url() {
@@ -211,6 +286,8 @@
   if (fMin) fMin.addEventListener('change', fetchOnce);
   if (fQ) fQ.addEventListener('input', fetchOnce);
   if (fMod) fMod.addEventListener('change', fetchOnce);
+  const fSort = document.getElementById('fSort');
+  if (fSort) fSort.addEventListener('change', fetchOnce);
   fetchOnce();
   setTimeout(startWS, 200);
   startSSE();
@@ -275,7 +352,10 @@
       const r = await fetch('/admin/dev/mock/session', {method:'POST'});
       const j = await r.json();
       if (j && j.ok && j.session_id) {
-        // refresh grid to include mock session
+        // mark pending and refresh grid to include mock session
+        pendingMockSessionId = j.session_id;
+        const gridEl = document.getElementById('grid');
+        if (gridEl) { gridEl.prepend(makeSkeletonCard()); }
         try { await fetch('/api/v1/sessions/current'); } catch {}
       }
     } catch {}
