@@ -361,8 +361,8 @@
       if (sbOpenProfile) sbOpenProfile.onclick = (e)=>{ e.preventDefault(); btnProfile?.click(); };
       // Start presence heartbeat for site-online API
       if (!presenceTimer) {
-        const hb = async ()=>{ try { await fetch('/api/v1/presence/heartbeat', {method:'POST'}); } catch {} };
-        presenceTimer = setInterval(hb, 10000);
+        const hb = async ()=>{ try { await fetch('/api/v1/presence/heartbeat', {method:'POST'}); } catch {} setTimeout(refreshOnline, 200); };
+        presenceTimer = setInterval(hb, 5000);
         hb();
       }
       if (sbSignOut) sbSignOut.onclick = async (e)=>{ e.preventDefault(); try { await fetch('/auth/logout', {method:'POST'}); } catch {} location.href='/'; };
@@ -408,10 +408,10 @@
       if (onlineList) {
         const items = players.map(p=>{
           const av = p.avatar ? `<img src="${p.avatar}" class="tp-avatar-sm mr-2"/>` : '';
-          const dot = p.signed ? '<span class="dot sm ok mr-2"></span>' : '';
           const name = p.name || 'Player';
           const href = p.profile || '#';
-          return `<a class="flex items-center text-sm mb-1" href="${href}" target="_blank" rel="noopener">${dot}${av}<span class="truncate">${name}</span></a>`;
+          const dot = p.signed ? '<span class="dot sm ok ml-2 flex-none"></span>' : '';
+          return `<a class="flex items-center text-sm mb-1" href="${href}" target="_blank" rel="noopener">${av}<span class="truncate flex-1">${name}</span>${dot}</a>`;
         }).join('');
         onlineList.innerHTML = items || '<span class="opacity-70 text-xs">No players online</span>';
       }
@@ -420,7 +420,7 @@
     }
   }
   refreshOnline();
-  setInterval(refreshOnline, 15000);
+  setInterval(refreshOnline, 5000);
 
   if (btnCreateMock) btnCreateMock.addEventListener('click', async (e)=>{
     e.preventDefault();
