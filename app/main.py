@@ -540,12 +540,18 @@ def create_app() -> Flask:
             try:
                 from datetime import datetime as _dt, timedelta as _td
                 cutoff = _dt.utcnow() - _td(seconds=20)
-                present = db.execute(
+                present_ids: set[str] = set()
+                present_rows = db.execute(
                     _select(SitePresence).where(
                         (SitePresence.provider == 'steam') & (SitePresence.last_seen_at >= cutoff) & (SitePresence.external_id.in_([str(cmd1), str(cmd2)]))
                     )
                 ).scalars().all()
-                if len(present) < 2:
+                for pr in present_rows:
+                    present_ids.add(str(pr.external_id))
+                # Always count the caller as present if they are one of the commanders (even if heartbeat hasn't arrived yet)
+                if creator_provider == 'steam' and str(creator_external) in (str(cmd1), str(cmd2)):
+                    present_ids.add(str(creator_external))
+                if len(present_ids) < 2:
                     return jsonify({"ok": False, "error": "both_commanders_required"}), 400
             except Exception:
                 pass
