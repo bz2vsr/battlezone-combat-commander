@@ -859,11 +859,13 @@ def create_app() -> Flask:
                     # Do not prompt the creator of the Team Picker session about their own start
                     if tps.created_by_provider == provider and tps.created_by_external_id == external:
                         continue
+                    # Include created_at for recency filtering
                     sessions.setdefault(tps.session_id, {
                         "session_id": tps.session_id,
                         "state": tps.state,
                         "participants": [],
-                        "created_by": {"provider": tps.created_by_provider, "id": tps.created_by_external_id}
+                        "created_by": {"provider": tps.created_by_provider, "id": tps.created_by_external_id},
+                        "created_at_ts": (tps.created_at.timestamp() if getattr(tps, 'created_at', None) else 0)
                     })
             if not sessions:
                 return jsonify({"items": []})
@@ -901,6 +903,9 @@ def create_app() -> Flask:
                     })
             # Only notify when the other commander (creator) is present and the game is in PreGame
             filtered = []
+            # Only show prompts for recently created Team Picker sessions to reflect a fresh "start" event
+            PROMPT_WINDOW_SECONDS = 90
+            now_ts = _dt.utcnow().timestamp()
             for item in sessions.values():
                 my = next((pp for pp in item.get("participants", []) if pp.get("provider") == provider and str(pp.get("id")) == str(external) and pp.get("role") in ("commander1", "commander2")), None)
                 if not my:
@@ -911,6 +916,10 @@ def create_app() -> Flask:
                 # Must be created by the other commander
                 created_by = item.get("created_by") or {}
                 if not (created_by.get("provider") == other.get("provider") and str(created_by.get("id")) == str(other.get("id"))):
+                    continue
+                # Must be a recent start
+                cat = float(item.get("created_at_ts") or 0)
+                if (now_ts - cat) > PROMPT_WINDOW_SECONDS:
                     continue
                 # Other commander must be active recently
                 if not other.get("active"):
