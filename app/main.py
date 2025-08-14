@@ -17,8 +17,8 @@ def create_app() -> Flask:
     app = Flask(__name__)
     app.config['SECRET_KEY'] = settings.secret_key
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-        # Expose realtime flag to templates/JS (set by dev.ps1 -Realtime)
-        app.config['REALTIME_ENABLED'] = bool(os.getenv('REALTIME'))
+    # Expose realtime flag to templates/JS (set by dev.ps1 -Realtime)
+    app.config['REALTIME_ENABLED'] = bool(os.getenv('REALTIME'))
 
     # Ensure DB schema exists (idempotent)
     try:
