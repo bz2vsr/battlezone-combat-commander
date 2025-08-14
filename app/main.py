@@ -927,9 +927,7 @@ def create_app() -> Flask:
                 cat = float(item.get("created_at_ts") or 0)
                 if (now_ts - cat) > PROMPT_WINDOW_SECONDS:
                     continue
-                # Other commander must be active recently
-                if not other.get("active"):
-                    continue
+                # Do not require explicit Team Picker presence for the other commander; "start" recency is enough.
                 filtered.append(item)
             return jsonify({"items": filtered})
 
