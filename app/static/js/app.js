@@ -370,7 +370,7 @@
   const body = document.getElementById('appModalBody');
   const btnProfile = document.getElementById('profileLink');
   const btnSignout = document.getElementById('signout');
-  const btnCreateMock = document.getElementById('createMockSession');
+  // const btnCreateMock = document.getElementById('createMockSession');
   // Sidebar user elements
   const sbSignedIn = document.getElementById('sbSignedIn');
   const sbSignedOut = document.getElementById('sbSignedOut');
@@ -538,24 +538,7 @@
   }
   setInterval(checkTeamPickerInvites, 7000);
 
-  if (btnCreateMock) btnCreateMock.addEventListener('click', async (e)=>{
-    e.preventDefault();
-    try {
-      const original = btnCreateMock.textContent;
-      btnCreateMock.textContent = 'Loading…';
-      btnCreateMock.disabled = true;
-      const r = await fetch('/admin/dev/mock/session', {method:'POST'});
-      const j = await r.json();
-      if (j && j.ok && j.session_id) {
-        // refresh grid to include mock session
-        try { await fetch('/api/v1/sessions/current'); } catch {}
-      }
-    } catch {}
-    finally {
-      btnCreateMock.textContent = 'Create mock session';
-      btnCreateMock.disabled = false;
-    }
-  });
+  // Mock session button removed
 })();
 
 
