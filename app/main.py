@@ -584,7 +584,7 @@ def create_app() -> Flask:
         uid = session.get('uid')
         if not uid:
             return jsonify({"ok": False, "error": "not_authenticated"}), 401
-        provider, external = uid.split(":", 1)
+        creator_provider, creator_external = uid.split(":", 1)
         from app.db import session_scope
         from app.models import TeamPickSession, TeamPickParticipant, Session, SessionPlayer
         from sqlalchemy import select as _select
@@ -625,10 +625,28 @@ def create_app() -> Flask:
                         cmd1 = cands[0]
                     if not cmd2:
                         cmd2 = cands[1]
-            # Delegate to start logic by recreating a new session with same commanders
-        # Call start endpoint logic by making a local request-like call
-        with app.test_request_context(json={"commander1_id": cmd1, "commander2_id": cmd2}):
-            return team_picker_start(session_id)
+            if not cmd1 or not cmd2:
+                return jsonify({"ok": False, "error": "missing_commanders"}), 400
+            # Ensure caller is one of the commanders
+            if creator_provider == 'steam' and str(creator_external) not in (str(cmd1), str(cmd2)):
+                return jsonify({"ok": False, "error": "forbidden"}), 403
+            # Create new pick session
+            tps = TeamPickSession(
+                session_id=session_id,
+                state="open",
+                created_by_provider=creator_provider,
+                created_by_external_id=creator_external,
+            )
+            db.add(tps)
+            db.flush()
+            db.add(TeamPickParticipant(pick_session_id=tps.id, provider='steam', external_id=str(cmd1), role='commander1'))
+            db.add(TeamPickParticipant(pick_session_id=tps.id, provider='steam', external_id=str(cmd2), role='commander2'))
+        try:
+            if socketio:
+                socketio.emit("team_picker:update", {"session_id": session_id, "action": "restart"}, room=f"team_picker:{session_id}", broadcast=True)
+        except Exception:
+            pass
+        return team_picker_get(session_id)
 
     @app.post("/api/v1/team_picker/<path:session_id>/coin_toss")
     def team_picker_coin_toss(session_id: str):
