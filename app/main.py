@@ -759,6 +759,13 @@ def create_app() -> Flask:
             from datetime import datetime as _dt
             mock_id = f"Dev:TP:{provider}:{external_id}"
             with session_scope() as db:
+                # Remove any existing Team Picker sessions for this mock to ensure a clean start
+                try:
+                    from app.models import TeamPickSession as _TPS
+                    from sqlalchemy import delete as _delete
+                    db.execute(_delete(_TPS).where(_TPS.session_id == mock_id))
+                except Exception:
+                    pass
                 row = db.get(Session, mock_id)
                 if row is None:
                     row = Session(id=mock_id, source="dev", name="Dev Team Picker", state="PreGame", tps=30, version="dev", map_file="vsr4pool", mod_id="0", attributes={"max_players": 8}, started_at=_dt.utcnow())
