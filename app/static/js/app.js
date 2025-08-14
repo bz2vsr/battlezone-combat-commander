@@ -142,11 +142,11 @@
             // Gate: require PreGame and both commanders signed in
             const isPre = (s.state === 'PreGame');
             const needTwo = '<div class="text-xs opacity-70">Team Picker requires both commanders to be signed in.</div>';
-            mBody.innerHTML = `<div class="space-y-2">
+            mBody.innerHTML = `<div class="space-y-4">
               <div class="text-sm opacity-80">No Team Picker is active for this session.</div>
               ${!isPre?'<div class="alert bg-base-200 border border-base-300 text-xs">Team Picker is only available in PreGame.</div>':''}
               ${needTwo}
-              <div><button id="tpStart" class="btn btn-sm btn-primary" ${!isPre?'disabled':''}>Start Team Picker</button></div>
+              <div><button id="tpStart" class="btn btn-sm btn-primary mt-2" ${!isPre?'disabled':''}>Start Team Picker</button></div>
             </div>`;
             daisyModal.showModal();
             const btn = document.getElementById('tpStart');
