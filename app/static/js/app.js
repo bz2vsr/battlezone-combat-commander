@@ -201,17 +201,17 @@
         });
         const rosterHtml = eligible.map(r=>{ const nick = (r.steam&&r.steam.nickname) || r.name || r.steam_id; const av = (r.steam&&r.steam.avatar)?`<img src="${r.steam.avatar}" class="tp-avatar-sm mr-2"/>`:''; return `<button class="btn btn-xs" data-sid="${r.steam_id}" ${!tp.coin_winner_team?'disabled':''}>${av}<span class="truncate">${nick}</span></button>`; }).join(' ');
         const commandersTop = `
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-0">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-0 mb-4 md:mb-6">
             <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">${c1}</div></div>
             <div class="card bg-base-100 border border-base-300"><div class="card-body p-3 flex justify-end">${c2}</div></div>
           </div>`;
         mBody.innerHTML = `
-          <div class="space-y-8 md:space-y-10">
+          <div>
             ${commandersTop}
-            <div class="flex gap-2 items-center text-sm"><span class="badge-soft">${tp.state}</span>${coin}<span class="text-xs opacity-70">${tp.next_team?`Team ${tp.next_team}'s turn`:(!tp.coin_winner_team?'Run coin toss to begin':'')}</span></div>
-            ${ (tp.accepted && (tp.accepted.commander1 || tp.accepted.commander2) && !(tp.accepted.commander1 && tp.accepted.commander2)) ? `<div class=\"alert bg-base-200 border border-base-300 text-xs\">Waiting for the other commander to finalize…</div>` : ''}
-            <div class="alert bg-base-200 border border-base-300 text-xs">${waitingText}</div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div class="flex gap-2 items-center text-sm mt-2 md:mt-3"><span class="badge-soft">${tp.state}</span>${coin}<span class="text-xs opacity-70">${tp.next_team?`Team ${tp.next_team}'s turn`:(!tp.coin_winner_team?'Run coin toss to begin':'')}</span></div>
+            ${ (tp.accepted && (tp.accepted.commander1 || tp.accepted.commander2) && !(tp.accepted.commander1 && tp.accepted.commander2)) ? `<div class=\"alert bg-base-200 border border-base-300 text-xs mt-2\">Waiting for the other commander to finalize…</div>` : ''}
+            <div class="alert bg-base-200 border border-base-300 text-xs mt-2 md:mt-3">${waitingText}</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-3 md:mt-4">
               <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">
                 <div class="flex items-center justify-between mb-2">
                   <div class="text-sm opacity-70">Team 1</div>
@@ -225,8 +225,8 @@
                 ${team2Picks}
               </div></div>
             </div>
-            <div class="flex flex-wrap gap-2 mt-1" id="tpRoster">${rosterHtml || '<span class="opacity-70 text-sm">No eligible players</span>'}</div>
-            <div class="flex gap-2 pt-2">
+            <div class="flex flex-wrap gap-2 mt-3 md:mt-4" id="tpRoster">${rosterHtml || '<span class="opacity-70 text-sm">No eligible players</span>'}</div>
+            <div class="flex gap-2 mt-4 md:mt-5">
               <button id="tpPickRandom" class="btn btn-sm" ${eligible.length===0?'disabled':''}>Pick random</button>
               <button id="tpFinalize" class="btn btn-sm btn-primary">Finalize</button>
               <button id="tpRestart" class="btn btn-sm">Restart</button>
