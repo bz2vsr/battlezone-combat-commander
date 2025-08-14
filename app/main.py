@@ -842,7 +842,7 @@ def create_app() -> Flask:
             return jsonify({"items": []})
         provider, external = uid.split(":", 1)
         from app.db import session_scope
-        from app.models import TeamPickSession, TeamPickParticipant, Identity, Player
+        from app.models import TeamPickSession, TeamPickParticipant, Identity, Player, Session
         from sqlalchemy import select as _select
         from datetime import datetime as _dt, timedelta as _td
         with session_scope() as db:
@@ -850,6 +850,8 @@ def create_app() -> Flask:
                 _select(TeamPickSession, TeamPickParticipant)
                 .where(TeamPickSession.state == 'open')
                 .join(TeamPickParticipant, TeamPickParticipant.pick_session_id == TeamPickSession.id)
+                .join(Session, Session.id == TeamPickSession.session_id)
+                .where(Session.state == 'PreGame')
             ).all()
             sessions: dict[str, dict] = {}
             for tps, part in rows:
@@ -897,7 +899,24 @@ def create_app() -> Flask:
                         "active": presence.get(f"{tps.session_id}:{p.provider}:{p.external_id}", 0) >= cutoff_ts,
                         "steam": mapping.get(str(p.external_id)) if p.provider == 'steam' else None,
                     })
-            return jsonify({"items": list(sessions.values())})
+            # Only notify when the other commander (creator) is present and the game is in PreGame
+            filtered = []
+            for item in sessions.values():
+                my = next((pp for pp in item.get("participants", []) if pp.get("provider") == provider and str(pp.get("id")) == str(external) and pp.get("role") in ("commander1", "commander2")), None)
+                if not my:
+                    continue
+                other = next((pp for pp in item.get("participants", []) if pp.get("role") in ("commander1", "commander2") and not (pp.get("provider") == provider and str(pp.get("id")) == str(external))), None)
+                if not other:
+                    continue
+                # Must be created by the other commander
+                created_by = item.get("created_by") or {}
+                if not (created_by.get("provider") == other.get("provider") and str(created_by.get("id")) == str(other.get("id"))):
+                    continue
+                # Other commander must be active recently
+                if not other.get("active"):
+                    continue
+                filtered.append(item)
+            return jsonify({"items": filtered})
 
     @app.post("/api/v1/team_picker/<path:session_id>/cancel")
     def team_picker_cancel(session_id: str):
