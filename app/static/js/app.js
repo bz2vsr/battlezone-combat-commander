@@ -170,7 +170,7 @@
         const team2Picks = (tp.picks||[]).filter(p=>p.team_id===2).map(p=>{
           const nick = (p.player&&p.player.steam&&p.player.steam.nickname) || p.player?.name || p.player?.steam_id || 'Player';
           const av = (p.player&&p.player.steam&&p.player.steam.avatar)?`<img src="${p.player.steam.avatar}" class="tp-avatar-sm mr-2"/>`:'';
-          return `<div class="flex items-center text-sm justify-end">${av}<span class="truncate">${nick}</span></div>`;
+          return `<div class="flex items-center text-sm">${av}<span class="truncate">${nick}</span></div>`;
         }).join('') || '<span class="opacity-70 text-xs">No picks yet</span>';
         const isMyTurn = (tp.your_role==='commander1' && tp.next_team===1) || (tp.your_role==='commander2' && tp.next_team===2);
         const waitingText = !tp.coin_winner_team ? 'Run coin toss to begin' : (isMyTurn? 'Your turn' : `Waiting for ${(tp.next_team===1?(commander1&&((commander1.steam&&commander1.steam.nickname)||commander1.id)):(commander2&&((commander2.steam&&commander2.steam.nickname)||commander2.id))) || 'commander'} to pick`);
@@ -193,11 +193,17 @@
             <div class="alert bg-base-200 border border-base-300 text-xs">${waitingText}</div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">
-                <div class="text-sm opacity-70 mb-2">Team 1</div>
+                <div class="flex items-center justify-between mb-2">
+                  <div class="text-sm opacity-70">Team 1</div>
+                </div>
+                ${commander1 ? `<div class=\"flex items-center text-sm mb-2\">${(commander1.steam&&commander1.steam.avatar)?`<img src=\"${commander1.steam.avatar}\" class=\"tp-avatar-sm mr-2\"/>`:''}<span class=\"truncate\">Commander 1: ${(commander1.steam&&commander1.steam.nickname)||commander1.id}</span></div>` : ''}
                 ${team1Picks}
               </div></div>
               <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">
-                <div class="text-sm opacity-70 mb-2">Team 2</div>
+                <div class="flex items-center justify-between mb-2">
+                  <div class="text-sm opacity-70">Team 2</div>
+                </div>
+                ${commander2 ? `<div class=\"flex items-center text-sm mb-2\">${(commander2.steam&&commander2.steam.avatar)?`<img src=\"${commander2.steam.avatar}\" class=\"tp-avatar-sm mr-2\"/>`:''}<span class=\"truncate\">Commander 2: ${(commander2.steam&&commander2.steam.nickname)||commander2.id}</span></div>` : ''}
                 ${team2Picks}
               </div></div>
             </div>

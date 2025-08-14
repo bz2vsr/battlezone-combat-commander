@@ -855,7 +855,17 @@ def create_app() -> Flask:
                 # Eligible roster = session players with steam_id not already picked
                 picked_ids = set(p.player_steam_id for p in existing)
                 roster = db.execute(_select(SessionPlayer).where(SessionPlayer.session_id == session_id)).scalars().all()
-                pool = [str((r.stats or {}).get("steam_id")) for r in roster if (r.stats or {}).get("steam_id") and str((r.stats or {}).get("steam_id")) not in picked_ids]
+                # Exclude commanders from the pool
+                commander_ids = set()
+                parts = db.execute(_select(TeamPickParticipant).where(TeamPickParticipant.pick_session_id == tps.id)).scalars().all()
+                for prt in parts:
+                    if prt.role in ("commander1", "commander2") and prt.provider == "steam":
+                        commander_ids.add(str(prt.external_id))
+                pool = [str((r.stats or {}).get("steam_id"))
+                        for r in roster
+                        if (r.stats or {}).get("steam_id")
+                        and str((r.stats or {}).get("steam_id")) not in picked_ids
+                        and str((r.stats or {}).get("steam_id")) not in commander_ids]
                 if not pool:
                     return jsonify({"ok": False, "error": "no_eligible"}), 400
                 choice = random.choice(pool)
