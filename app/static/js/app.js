@@ -184,8 +184,10 @@
           try { if (socket && window.__REALTIME__) { socket.emit('join', { room: `team_picker:${s.id}` }); } } catch {}
           try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/presence`, {method:'POST', credentials:'same-origin'}); } catch {}
           let tpPresenceTimer = setInterval(async ()=>{ try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/presence`, {method:'POST', credentials:'same-origin'}); } catch {} }, 10000);
+          // Fallback realtime: periodic refresh while modal open
+          let tpRefreshTimer = setInterval(async ()=>{ try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`, {cache:'no-store'}); const j=await r.json(); if (j && j.session && typeof window.__RENDER_TP==='function') { window.__RENDER_TP(j.session); } } catch {} }, 2000);
           const modalEl = document.getElementById('appModal');
-          const onClose = ()=>{ window.__TP_OPEN__ = null; try { if (socket && window.__REALTIME__) { socket.emit('leave', { room: `team_picker:${s.id}` }); } } catch {}; if (tpPresenceTimer) { clearInterval(tpPresenceTimer); tpPresenceTimer=null; } modalEl?.removeEventListener('close', onClose); };
+          const onClose = ()=>{ window.__TP_OPEN__ = null; try { if (socket && window.__REALTIME__) { socket.emit('leave', { room: `team_picker:${s.id}` }); } } catch {}; if (tpPresenceTimer) { clearInterval(tpPresenceTimer); tpPresenceTimer=null; } if (tpRefreshTimer) { clearInterval(tpRefreshTimer); tpRefreshTimer=null; } modalEl?.removeEventListener('close', onClose); };
           modalEl?.addEventListener('close', onClose);
         } catch {}
       };
