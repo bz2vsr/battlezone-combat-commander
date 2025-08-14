@@ -835,8 +835,13 @@ def create_app() -> Flask:
             ).all()
             sessions: dict[str, dict] = {}
             for tps, part in rows:
-                if part.provider == provider and part.external_id == external:
-                    sessions.setdefault(tps.session_id, {"session_id": tps.session_id, "state": tps.state, "participants": []})
+                if part.provider == provider and part.external_id == external and part.role in ("commander1", "commander2"):
+                    sessions.setdefault(tps.session_id, {
+                        "session_id": tps.session_id,
+                        "state": tps.state,
+                        "participants": [],
+                        "created_by": {"provider": tps.created_by_provider, "id": tps.created_by_external_id}
+                    })
             if not sessions:
                 return jsonify({"items": []})
             ids = list(sessions.keys())
