@@ -343,7 +343,7 @@
         try {
           if (!window.__TP_OPEN__ || !payload || !payload.session_id) return;
           if (window.__TP_OPEN__ !== payload.session_id) return;
-          fetch(`/api/v1/team_picker/${encodeURIComponent(window.__TP_OPEN__)}`).then(r=>r.json()).then(j=>{ if (j && j.session) { if (typeof window.__RENDER_TP === 'function') { window.__RENDER_TP(j.session); } } });
+          fetch(`/api/v1/team_picker/${encodeURIComponent(window.__TP_OPEN__)}`, {cache:'no-store'}).then(r=>r.json()).then(j=>{ if (j && j.session) { if (typeof window.__RENDER_TP === 'function') { window.__RENDER_TP(j.session); } } });
         } catch {}
       });
       socket.on('connect_error', ()=>{ if (!sseLive) { if (connDot) connDot.className='dot err'; if (connText) connText.textContent='Reconnecting…'; } });

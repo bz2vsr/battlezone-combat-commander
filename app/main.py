@@ -37,6 +37,27 @@ def create_app() -> Flask:
                             async_mode="eventlet")
         socketio.init_app(app)
 
+        # Socket.IO room helpers for realtime Team Picker fanout
+        from flask_socketio import join_room as _join_room, leave_room as _leave_room
+
+        @socketio.on('join')
+        def _on_join(data):  # type: ignore[no-redef]
+            try:
+                room = (data or {}).get('room')
+                if isinstance(room, str) and room:
+                    _join_room(room)
+            except Exception:
+                pass
+
+        @socketio.on('leave')
+        def _on_leave(data):  # type: ignore[no-redef]
+            try:
+                room = (data or {}).get('room')
+                if isinstance(room, str) and room:
+                    _leave_room(room)
+            except Exception:
+                pass
+
     @app.get("/healthz")
     def healthz():
         return jsonify({"status": "ok"})
