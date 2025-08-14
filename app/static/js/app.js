@@ -327,6 +327,7 @@
   const sbOpenProfile = document.getElementById('sbOpenProfile');
   const sbSignOut = document.getElementById('sbSignOut');
   const onlineList = document.getElementById('onlineList');
+  let presenceTimer = null;
 
   async function fetchMe(){ try { const r = await fetch('/api/v1/me'); return await r.json(); } catch { return {user:null}; } }
 
@@ -358,6 +359,12 @@
       if (sbName) sbName.textContent = user.display_name || user.id;
       if (sbProfile) sbProfile.href = user.profile;
       if (sbOpenProfile) sbOpenProfile.onclick = (e)=>{ e.preventDefault(); btnProfile?.click(); };
+      // Start presence heartbeat for site-online API
+      if (!presenceTimer) {
+        const hb = async ()=>{ try { await fetch('/api/v1/presence/heartbeat', {method:'POST'}); } catch {} };
+        presenceTimer = setInterval(hb, 10000);
+        hb();
+      }
       if (sbSignOut) sbSignOut.onclick = async (e)=>{ e.preventDefault(); try { await fetch('/auth/logout', {method:'POST'}); } catch {} location.href='/'; };
     } else {
       if (sbSignedOut) sbSignedOut.classList.remove('hidden');
@@ -368,38 +375,43 @@
   // Players online sidebar — refresh periodically
   async function refreshOnline(){
     try {
-      // Prefer site-online when logged in for presence; fallback to in-game unique players
-      let players = [];
+      const map = new Map();
+      // signed-in site presence
       try {
         const r1 = await fetch('/api/v1/players/site-online');
         const j1 = await r1.json();
-        if (j1 && Array.isArray(j1.players) && j1.players.length > 0) {
-          players = j1.players.map(p=>({
-            name: p.display_name || p.id,
-            avatar: p.avatar,
-            profile: p.profile
-          }));
+        const rows = (j1 && Array.isArray(j1.players)) ? j1.players : [];
+        for (const p of rows) {
+          const key = p.provider === 'steam' && p.id ? `steam:${p.id}` : `${p.provider}:${p.id}`;
+          map.set(key, { name: p.display_name || p.id, avatar: p.avatar, profile: p.profile, signed: true });
         }
       } catch {}
-      if (players.length === 0) {
-        try {
-          const r2 = await fetch('/api/v1/players/online');
-          const j2 = await r2.json();
-          if (j2 && Array.isArray(j2.players)) {
-            players = j2.players.map(p=>({
-              name: (p.steam && (p.steam.nickname)) || p.name,
-              avatar: p.steam && p.steam.avatar,
-              profile: p.steam && p.steam.url
-            }));
+      // in-game players
+      try {
+        const r2 = await fetch('/api/v1/players/online');
+        const j2 = await r2.json();
+        const rows2 = (j2 && Array.isArray(j2.players)) ? j2.players : [];
+        for (const p of rows2) {
+          const sid = p.steam && p.steam.id;
+          const key = sid ? `steam:${sid}` : `name:${p.name||''}`;
+          const name = (p.steam && p.steam.nickname) || p.name;
+          const avatar = p.steam && p.steam.avatar;
+          const profile = p.steam && p.steam.url;
+          if (!map.has(key)) map.set(key, { name, avatar, profile, signed: false });
+          else {
+            const cur = map.get(key);
+            map.set(key, { name: cur.name || name, avatar: cur.avatar || avatar, profile: cur.profile || profile, signed: cur.signed || false });
           }
-        } catch {}
-      }
+        }
+      } catch {}
+      const players = Array.from(map.values()).sort((a,b)=> (a.name||'').localeCompare(b.name||''));
       if (onlineList) {
-        const items = (players || []).map(p=>{
+        const items = players.map(p=>{
           const av = p.avatar ? `<img src="${p.avatar}" class="tp-avatar-sm mr-2"/>` : '';
+          const dot = p.signed ? '<span class="dot sm ok mr-2"></span>' : '';
           const name = p.name || 'Player';
           const href = p.profile || '#';
-          return `<a class="flex items-center text-sm mb-1" href="${href}" target="_blank" rel="noopener">${av}<span class="truncate">${name}</span></a>`;
+          return `<a class="flex items-center text-sm mb-1" href="${href}" target="_blank" rel="noopener">${dot}${av}<span class="truncate">${name}</span></a>`;
         }).join('');
         onlineList.innerHTML = items || '<span class="opacity-70 text-xs">No players online</span>';
       }
