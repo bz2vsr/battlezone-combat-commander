@@ -320,6 +320,7 @@
   const sbProfile = document.getElementById('sbProfile');
   const sbOpenProfile = document.getElementById('sbOpenProfile');
   const sbSignOut = document.getElementById('sbSignOut');
+  const onlineList = document.getElementById('onlineList');
 
   async function fetchMe(){ try { const r = await fetch('/api/v1/me'); return await r.json(); } catch { return {user:null}; } }
 
@@ -357,6 +358,29 @@
       if (sbSignedIn) sbSignedIn.classList.add('hidden');
     }
   })();
+
+  // Players online sidebar — refresh periodically
+  async function refreshOnline(){
+    try {
+      // Prefer site-online when logged in for presence, fallback to in-game
+      const r1 = await fetch('/api/v1/players/site-online');
+      const j1 = await r1.json();
+      const players = (j1 && Array.isArray(j1.players)) ? j1.players : null;
+      if (onlineList) {
+        const items = (players || []).map(p=>{
+          const av = p.avatar ? `<img src="${p.avatar}" class="tp-avatar-sm mr-2"/>` : '';
+          const name = p.display_name || p.id || 'Player';
+          const href = p.profile || '#';
+          return `<a class="flex items-center text-sm mb-1" href="${href}" target="_blank" rel="noopener">${av}<span class="truncate">${name}</span></a>`;
+        }).join('');
+        onlineList.innerHTML = items || '<span class="opacity-70 text-xs">No players online</span>';
+      }
+    } catch {
+      if (onlineList) onlineList.innerHTML = '<span class="opacity-70 text-xs">No players online</span>';
+    }
+  }
+  refreshOnline();
+  setInterval(refreshOnline, 15000);
 
   if (btnCreateMock) btnCreateMock.addEventListener('click', async (e)=>{
     e.preventDefault();
