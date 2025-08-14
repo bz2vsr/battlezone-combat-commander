@@ -785,6 +785,30 @@ def create_app() -> Flask:
                     upsert_player(i, 1, False, f"Player {i}", f"7656119900000000{i}")
                 for i in range(7, 11):
                     upsert_player(i, 2, False, f"Player {i}", f"765611990000000{i}")
+                # Ensure fake Steam identities exist for display (avatars/nicknames)
+                from app.models import Identity, Player as _Player
+                from sqlalchemy import select as _select2
+                def ensure_identity(steam_id: str, display_name: str):
+                    ident = db.execute(_select2(Identity).where(Identity.provider == "steam", Identity.external_id == str(steam_id))).scalar_one_or_none()
+                    if ident is None:
+                        p = _Player(display_name=display_name, avatar_url="/static/assets/placeholder-thumbnail-200x200.svg")
+                        db.add(p); db.flush()
+                        ident = Identity(player_id=p.id, provider="steam", external_id=str(steam_id), profile_url=f"https://steamcommunity.com/profiles/{steam_id}/")
+                        db.add(ident)
+                    else:
+                        p = db.get(_Player, ident.player_id)
+                        if p and not p.display_name:
+                            p.display_name = display_name
+                        if p and not p.avatar_url:
+                            p.avatar_url = "/static/assets/placeholder-thumbnail-200x200.svg"
+                    db.flush()
+                if provider == "steam" and external_id:
+                    ensure_identity(str(external_id), "You")
+                ensure_identity("76561199000000000", "Commander 2")
+                for i in range(2, 6):
+                    ensure_identity(f"7656119900000000{i}", f"Player {i}")
+                for i in range(7, 11):
+                    ensure_identity(f"765611990000000{i}", f"Player {i}")
             try:
                 if socketio:
                     socketio.emit("sessions:update", {"id": mock_id}, broadcast=True)
