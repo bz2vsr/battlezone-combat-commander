@@ -374,7 +374,7 @@ def create_app() -> Flask:
     @app.get("/api/v1/team_picker/<path:session_id>")
     def team_picker_get(session_id: str):
         from app.db import session_scope
-        from app.models import TeamPickSession, TeamPickPick, TeamPickParticipant, Identity, Player
+        from app.models import TeamPickSession, TeamPickPick, TeamPickParticipant, Identity, Player, SessionPlayer
         from sqlalchemy import select as _select
         with session_scope() as db:
             tps = db.execute(
@@ -390,13 +390,23 @@ def create_app() -> Flask:
             parts = db.execute(
                 _select(TeamPickParticipant).where(TeamPickParticipant.pick_session_id == tps.id)
             ).scalars().all()
-            # Enrich pick player Steam details
-            steam_ids = [p.player_steam_id for p in picks if p.player_steam_id]
-            mapping = {}
+            # Enrich Steam identities for picks, participants, and roster
+            roster_rows = db.execute(
+                _select(SessionPlayer).where(SessionPlayer.session_id == session_id).order_by(SessionPlayer.slot.asc())
+            ).scalars().all()
+            steam_ids: set[str] = set(p.player_steam_id for p in picks if p.player_steam_id)
+            for r in roster_rows:
+                sid = (r.stats or {}).get("steam_id")
+                if sid:
+                    steam_ids.add(str(sid))
+            for r in parts:
+                if r.provider == "steam" and r.external_id:
+                    steam_ids.add(str(r.external_id))
+            mapping: dict[str, dict] = {}
             if steam_ids:
                 rows = db.execute(
                     _select(Identity, Player)
-                    .where(Identity.provider == "steam", Identity.external_id.in_(steam_ids))
+                    .where(Identity.provider == "steam", Identity.external_id.in_(list(steam_ids)))
                     .join(Player, Identity.player_id == Player.id, isouter=True)
                 ).all()
                 for ident, player in rows:
@@ -406,38 +416,65 @@ def create_app() -> Flask:
                         "nickname": (player.display_name if player else None),
                         "avatar": (player.avatar_url if player else None),
                     }
-            return jsonify({
-                "session": {
-                    "id": tps.id,
-                    "game_session_id": tps.session_id,
-                    "state": tps.state,
-                    "coin_winner_team": tps.coin_winner_team,
-                    "created_at": tps.created_at.isoformat() if tps.created_at else None,
-                    "closed_at": tps.closed_at.isoformat() if tps.closed_at else None,
-                    "accepted": {
-                        "commander1": bool(tps.accepted_by_commander1),
-                        "commander2": bool(tps.accepted_by_commander2),
-                    },
-                    "participants": [
-                        {
-                            "provider": r.provider,
-                            "id": r.external_id,
-                            "role": r.role,
-                        } for r in parts
-                    ],
-                    "picks": [
-                        {
-                            "order": p.order_index,
-                            "team_id": p.team_id,
-                            "player": {
-                                "steam_id": p.player_steam_id,
-                                "steam": mapping.get(p.player_steam_id),
-                            },
-                            "picked_at": p.picked_at.isoformat() if p.picked_at else None,
-                        } for p in picks
-                    ],
-                }
-            })
+            # Compute next team
+            next_team = None
+            if tps.coin_winner_team is not None:
+                next_team = tps.coin_winner_team if (len(picks) % 2 == 0) else (2 if tps.coin_winner_team == 1 else 1)
+            # Determine caller role
+            me_role = None
+            uid = session.get('uid')
+            if uid:
+                pvd, ext = uid.split(":", 1)
+                for r in parts:
+                    if r.provider == pvd and r.external_id == ext:
+                        me_role = r.role
+                        break
+            # Build response
+            resp = {
+                "id": tps.id,
+                "game_session_id": tps.session_id,
+                "state": tps.state,
+                "coin_winner_team": tps.coin_winner_team,
+                "next_team": next_team,
+                "your_role": me_role,
+                "max_team_size": 5,
+                "created_at": tps.created_at.isoformat() if tps.created_at else None,
+                "closed_at": tps.closed_at.isoformat() if tps.closed_at else None,
+                "accepted": {
+                    "commander1": bool(tps.accepted_by_commander1),
+                    "commander2": bool(tps.accepted_by_commander2),
+                },
+                "participants": [
+                    {
+                        "provider": r.provider,
+                        "id": r.external_id,
+                        "role": r.role,
+                        "steam": (mapping.get(str(r.external_id)) if r.provider == "steam" else None),
+                    } for r in parts
+                ],
+                "picks": [
+                    {
+                        "order": p.order_index,
+                        "team_id": p.team_id,
+                        "player": {
+                            "steam_id": p.player_steam_id,
+                            "steam": mapping.get(p.player_steam_id),
+                        },
+                        "picked_at": p.picked_at.isoformat() if p.picked_at else None,
+                    } for p in picks
+                ],
+                "roster": [
+                    {
+                        "slot": rr.slot,
+                        "team_id": rr.team_id,
+                        "is_host": rr.is_host,
+                        "name": (rr.stats or {}).get("name"),
+                        "steam_id": (rr.stats or {}).get("steam_id"),
+                        "steam": mapping.get(str((rr.stats or {}).get("steam_id"))) if (rr.stats or {}).get("steam_id") else None,
+                    } for rr in roster_rows
+                ],
+            }
+            return jsonify({"session": resp})
 
     @app.post("/api/v1/team_picker/<path:session_id>/start")
     def team_picker_start(session_id: str):
@@ -510,7 +547,7 @@ def create_app() -> Flask:
         provider, external = uid.split(":", 1)
         from app.db import session_scope
         from app.models import TeamPickSession, TeamPickParticipant
-        from sqlalchemy import select as _select
+        from sqlalchemy import select as _select, text as _text
         with session_scope() as db:
             tps = db.execute(
                 _select(TeamPickSession).where(TeamPickSession.session_id == session_id, TeamPickSession.state == "open")
@@ -524,7 +561,17 @@ def create_app() -> Flask:
             ).scalars().first()
             if not part or part.role not in ("commander1", "commander2"):
                 return jsonify({"ok": False, "error": "forbidden"}), 403
-            tps.coin_winner_team = 1 if secrets.randbits(1) == 0 else 2
+            winner = 1 if secrets.randbits(1) == 0 else 2
+            # Atomic compare-and-set to avoid race
+            r = db.execute(_text(
+                """
+                UPDATE team_pick_sessions SET coin_winner_team = :w
+                WHERE id = :id AND state = 'open' AND coin_winner_team IS NULL
+                """
+            ), {"w": winner, "id": tps.id})
+            if getattr(r, "rowcount", 0) != 1:
+                return jsonify({"ok": False, "error": "already_tossed"}), 400
+            tps.coin_winner_team = winner
         try:
             if socketio:
                 socketio.emit("team_picker:update", {"session_id": session_id, "action": "coin_toss", "team": tps.coin_winner_team}, room=f"team_picker:{session_id}", broadcast=True)
@@ -569,6 +616,12 @@ def create_app() -> Flask:
                 next_team = tps.coin_winner_team
             else:
                 next_team = 2 if tps.coin_winner_team == 1 else 1
+            # Enforce team cap (max 5 including commander => at most 4 picks per team)
+            team_counts = {1: 0, 2: 0}
+            for e in existing:
+                team_counts[e.team_id] = team_counts.get(e.team_id, 0) + 1
+            if team_counts.get(next_team, 0) >= 4:
+                return jsonify({"ok": False, "error": "team_full"}), 400
             # Only the corresponding commander may pick
             required_role = "commander1" if next_team == 1 else "commander2"
             if part.role != required_role:
@@ -727,17 +780,67 @@ def create_app() -> Flask:
                         existing.stats = stats
                 upsert_player(1, 1, True, "Commander 1", external_id if provider == "steam" else None)
                 upsert_player(6, 2, True, "Commander 2", "76561199000000000")
-                # Add 6 pickable players with fake steam ids
+                # Seed 4 additional players per team (for STRAT 5 max with commanders)
                 for i in range(2, 6):
-                    upsert_player(i, None, False, f"Player {i}", f"7656119900000000{i}")
-                for i in range(7, 9):
-                    upsert_player(i, None, False, f"Player {i}", f"765611990000000{i}")
+                    upsert_player(i, 1, False, f"Player {i}", f"7656119900000000{i}")
+                for i in range(7, 11):
+                    upsert_player(i, 2, False, f"Player {i}", f"765611990000000{i}")
             try:
                 if socketio:
                     socketio.emit("sessions:update", {"id": mock_id}, broadcast=True)
             except Exception:
                 pass
             return jsonify({"ok": True, "session_id": mock_id})
+
+        @app.post("/admin/dev/team_picker/<path:session_id>/auto_pick")
+        def admin_dev_team_picker_auto_pick(session_id: str):
+            # Auto-pick a random eligible player for the other commander (single-user testing helper)
+            from app.db import session_scope
+            from app.models import TeamPickSession, TeamPickPick, TeamPickParticipant, SessionPlayer
+            from sqlalchemy import select as _select
+            import random
+            uid = session.get('uid')
+            if not uid:
+                return jsonify({"ok": False, "error": "not_authenticated"}), 401
+            with session_scope() as db:
+                tps = db.execute(
+                    _select(TeamPickSession).where(TeamPickSession.session_id == session_id, TeamPickSession.state == "open")
+                ).scalars().first()
+                if not tps or tps.coin_winner_team is None:
+                    return jsonify({"ok": False, "error": "not_ready"}), 400
+                existing = db.execute(
+                    _select(TeamPickPick).where(TeamPickPick.pick_session_id == tps.id).order_by(TeamPickPick.order_index.asc())
+                ).scalars().all()
+                # Determine whose turn
+                next_team = tps.coin_winner_team if (len(existing) % 2 == 0) else (2 if tps.coin_winner_team == 1 else 1)
+                # Auto-pick only if it's NOT the caller's team
+                pvd, ext = uid.split(":", 1)
+                my = db.execute(_select(TeamPickParticipant).where(TeamPickParticipant.pick_session_id == tps.id, TeamPickParticipant.provider == pvd, TeamPickParticipant.external_id == ext)).scalars().first()
+                if my and ((my.role == "commander1" and next_team == 1) or (my.role == "commander2" and next_team == 2)):
+                    return jsonify({"ok": False, "error": "your_turn"}), 400
+                # Eligible roster = session players with steam_id not already picked
+                picked_ids = set(p.player_steam_id for p in existing)
+                roster = db.execute(_select(SessionPlayer).where(SessionPlayer.session_id == session_id)).scalars().all()
+                pool = [str((r.stats or {}).get("steam_id")) for r in roster if (r.stats or {}).get("steam_id") and str((r.stats or {}).get("steam_id")) not in picked_ids]
+                if not pool:
+                    return jsonify({"ok": False, "error": "no_eligible"}), 400
+                choice = random.choice(pool)
+                # Reuse pick logic via insert
+                from app.models import TeamPickPick as _Pick
+                order_index = len(existing) + 1
+                # Enforce cap
+                team_counts = {1: 0, 2: 0}
+                for e in existing:
+                    team_counts[e.team_id] = team_counts.get(e.team_id, 0) + 1
+                if team_counts.get(next_team, 0) >= 4:
+                    return jsonify({"ok": False, "error": "team_full"}), 400
+                db.add(_Pick(pick_session_id=tps.id, order_index=order_index, team_id=next_team, player_steam_id=choice, picked_by_provider="dev", picked_by_external_id="auto"))
+            try:
+                if socketio:
+                    socketio.emit("team_picker:update", {"session_id": session_id, "action": "auto_pick"}, room=f"team_picker:{session_id}", broadcast=True)
+            except Exception:
+                pass
+            return team_picker_get(session_id)
 
     return app
 
