@@ -313,22 +313,22 @@
   function renderTP(tp){
     const commander1 = (tp.participants||[]).find(p=>p.role==='commander1');
     const commander2 = (tp.participants||[]).find(p=>p.role==='commander2');
-    const c1 = commander1 ? `<div class="flex items-center gap-2">${(commander1.steam&&commander1.steam.avatar)?`<img src="${commander1.steam.avatar}" class="tp-avatar"/>`:''}<span class="text-sm font-medium">${(commander1.steam&&commander1.steam.nickname)||commander1.id}</span></div>` : '';
-    const c2 = commander2 ? `<div class="flex items-center gap-2">${(commander2.steam&&commander2.steam.avatar)?`<img src="${commander2.steam.avatar}" class="tp-avatar"/>`:''}<span class="text-sm font-medium">${(commander2.steam&&commander2.steam.nickname)||commander2.id}</span></div>` : '';
+    const c1 = commander1 ? `<div class="flex items-center gap-3">${(commander1.steam&&commander1.steam.avatar)?`<img src="${commander1.steam.avatar}" class="tp-avatar border-2 border-blue-400 shadow-md"/>`:''}<span class="text-sm font-semibold text-blue-300">${(commander1.steam&&commander1.steam.nickname)||commander1.id}</span></div>` : '';
+    const c2 = commander2 ? `<div class="flex items-center gap-3">${(commander2.steam&&commander2.steam.avatar)?`<img src="${commander2.steam.avatar}" class="tp-avatar border-2 border-red-400 shadow-md"/>`:''}<span class="text-sm font-semibold text-red-300">${(commander2.steam&&commander2.steam.nickname)||commander2.id}</span></div>` : '';
 
     const team1Picks = (tp.picks||[]).filter(p=>p.team_id===1).map(p=>{
       const nick = (p.player&&p.player.steam&&p.player.steam.nickname) || p.player?.name || p.player?.steam_id || 'Player';
-      const av = (p.player&&p.player.steam&&p.player.steam.avatar)?`<img src="${p.player.steam.avatar}" class="tp-avatar-sm mr-2"/>`:'';
-      return `<div class="flex items-center text-sm">${av}<span class="truncate">${nick}</span></div>`;
-    }).join('') || '<span class="opacity-70 text-xs">No picks yet</span>';
+      const av = (p.player&&p.player.steam&&p.player.steam.avatar)?`<img src="${p.player.steam.avatar}" class="tp-avatar-sm mr-2 border border-blue-300 rounded-full shadow-sm"/>`:'';
+      return `<div class="flex items-center text-sm py-1">${av}<span class="truncate text-blue-200">${nick}</span></div>`;
+    }).join('') || '<span class="opacity-70 text-xs italic">No picks yet</span>';
     const team2Picks = (tp.picks||[]).filter(p=>p.team_id===2).map(p=>{
       const nick = (p.player&&p.player.steam&&p.player.steam.nickname) || p.player?.name || p.player?.steam_id || 'Player';
-      const av = (p.player&&p.player.steam&&p.player.steam.avatar)?`<img src="${p.player.steam.avatar}" class="tp-avatar-sm mr-2"/>`:'';
-      return `<div class="flex items-center text-sm">${av}<span class="truncate">${nick}</span></div>`;
-    }).join('') || '<span class="opacity-70 text-xs">No picks yet</span>';
+      const av = (p.player&&p.player.steam&&p.player.steam.avatar)?`<img src="${p.player.steam.avatar}" class="tp-avatar-sm mr-2 border border-red-300 rounded-full shadow-sm"/>`:'';
+      return `<div class="flex items-center text-sm py-1">${av}<span class="truncate text-red-200">${nick}</span></div>`;
+    }).join('') || '<span class="opacity-70 text-xs italic">No picks yet</span>';
     const isMyTurn = (tp.your_role==='commander1' && tp.next_team===1) || (tp.your_role==='commander2' && tp.next_team===2);
     const waitingText = !tp.coin_winner_team ? 'Run coin toss to begin' : (isMyTurn? 'Your turn' : `Waiting for ${(tp.next_team===1?(commander1&&((commander1.steam&&commander1.steam.nickname)||commander1.id)):(commander2&&((commander2.steam&&commander2.steam.nickname)||commander2.id))) || 'commander'} to pick`);
-    const coin = tp.coin_winner_team? `<span class="badge-soft">Coin: Team ${tp.coin_winner_team}</span>` : '<button id="tpCoin" class="btn btn-xs">Coin toss</button>';
+    const coin = tp.coin_winner_team? `<span class="badge bg-purple-600 text-purple-100 border-purple-500 shadow-md">🪙 Coin: Team ${tp.coin_winner_team}</span>` : '<button id="tpCoin" class="btn btn-xs btn-accent shadow-md">🎲 Coin toss</button>';
     const commanderIds = new Set([
       commander1 && commander1.id ? String(commander1.id) : '',
       commander2 && commander2.id ? String(commander2.id) : ''
@@ -339,38 +339,98 @@
       if (commanderIds.has(sid)) return false; // exclude commanders from pool
       return !(tp.picks||[]).some(p=>p.player && String(p.player.steam_id)===sid);
     });
-    const rosterHtml = eligible.map(r=>{ const nick = (r.steam&&r.steam.nickname) || r.name || r.steam_id; const av = (r.steam&&r.steam.avatar)?`<img src="${r.steam.avatar}" class="tp-avatar-sm mr-2"/>`:''; return `<button class="btn btn-xs" data-sid="${r.steam_id}" ${!tp.coin_winner_team?'disabled':''}>${av}<span class="truncate">${nick}</span></button>`; }).join(' ');
+    const rosterHtml = eligible.map(r=>{ const nick = (r.steam&&r.steam.nickname) || r.name || r.steam_id; const av = (r.steam&&r.steam.avatar)?`<img src="${r.steam.avatar}" class="tp-avatar-sm mr-2 rounded-full shadow-sm"/>`:''; return `<button class="btn btn-xs btn-outline hover:btn-primary transition-all duration-200 shadow-sm" data-sid="${r.steam_id}" ${!tp.coin_winner_team?'disabled':''}>${av}<span class="truncate">${nick}</span></button>`; }).join(' ');
     const commandersTop = `
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-0 mb-4 md:mb-6">
-        <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">${c1}</div></div>
-        <div class="card bg-base-100 border border-base-300"><div class="card-body p-3 flex justify-end">${c2}</div></div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <div class="card bg-gradient-to-br from-blue-900/20 to-blue-800/10 border-2 border-blue-500/30 shadow-lg">
+          <div class="card-body p-4">
+            <div class="text-xs font-medium text-blue-400 mb-3 uppercase tracking-wider">⚔️ Team 1 Commander</div>
+            ${c1}
+          </div>
+        </div>
+        <div class="card bg-gradient-to-br from-red-900/20 to-red-800/10 border-2 border-red-500/30 shadow-lg">
+          <div class="card-body p-4">
+            <div class="text-xs font-medium text-red-400 mb-3 uppercase tracking-wider text-right">Team 2 Commander ⚔️</div>
+            <div class="flex justify-end">
+              ${c2}
+            </div>
+          </div>
+        </div>
       </div>`;
     const sessionId = tp.session_id || tp.id;
     mBody.innerHTML = `
-      <div>
+      <div class="space-y-8">
         ${commandersTop}
-        <div class="flex gap-2 items-center text-sm mt-2 md:mt-3"><span class="badge-soft">${tp.state}</span>${coin}<span class="text-xs opacity-70">${tp.next_team?`Team ${tp.next_team}'s turn`:(!tp.coin_winner_team?'Run coin toss to begin':'')}</span></div>
-        ${ (tp.accepted && (tp.accepted.commander1 || tp.accepted.commander2) && !(tp.accepted.commander1 && tp.accepted.commander2)) ? `<div class=\"alert bg-base-200 border border-base-300 text-xs mt-2\">Waiting for the other commander to finalize…</div>` : ''}
-        <div class="alert bg-base-200 border border-base-300 text-xs mt-2 md:mt-3">${waitingText}</div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-3 md:mt-4">
-          <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">
-            <div class="flex items-center justify-between mb-2">
-              <div class="text-sm opacity-70">Team 1</div>
-            </div>
-            ${team1Picks}
-          </div></div>
-          <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">
-            <div class="flex items-center justify-between mb-2">
-              <div class="text-sm opacity-70">Team 2</div>
-            </div>
-            ${team2Picks}
-          </div></div>
+        
+        <div class="border-t border-base-300/50 pt-6">
+          <div class="flex gap-3 items-center text-sm mb-4">
+            <span class="badge badge-lg bg-accent/20 text-accent border-accent/40 shadow-sm">${tp.state}</span>
+            ${coin}
+            <span class="text-xs opacity-70 ml-auto font-medium">${tp.next_team?`Team ${tp.next_team}'s turn`:(!tp.coin_winner_team?'Run coin toss to begin':'')}</span>
+          </div>
+          ${ (tp.accepted && (tp.accepted.commander1 || tp.accepted.commander2) && !(tp.accepted.commander1 && tp.accepted.commander2)) ? `<div class=\"alert bg-warning/10 border-warning/30 text-warning text-sm mb-4 shadow-sm\"><span class=\"font-medium\">⏳ Waiting for the other commander to finalize…</span></div>` : ''}
+          <div class="alert bg-info/10 border-info/30 text-info text-sm shadow-sm">
+            <span class="font-medium">📋 ${waitingText}</span>
+          </div>
         </div>
-        <div class="flex flex-wrap gap-2 mt-3 md:mt-4" id="tpRoster">${rosterHtml || '<span class="opacity-70 text-sm">No eligible players</span>'}</div>
-        <div class="flex gap-2 mt-4 md:mt-5">
-          <button id="tpPickRandom" class="btn btn-sm" ${eligible.length===0?'disabled':''}>Pick random</button>
-          <button id="tpFinalize" class="btn btn-sm btn-primary">Finalize</button>
-          <button id="tpRestart" class="btn btn-sm">Restart</button>
+        
+        <div class="border-t border-base-300/50 pt-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="card bg-gradient-to-br from-blue-900/10 to-blue-800/5 border-2 border-blue-500/20 shadow-lg">
+              <div class="card-body p-4">
+                <div class="flex items-center justify-between mb-3">
+                  <div class="text-sm font-semibold text-blue-400 flex items-center gap-2">
+                    <span class="w-3 h-3 bg-blue-500 rounded-full shadow-sm"></span>
+                    Team 1
+                  </div>
+                  <span class="text-xs opacity-60 bg-blue-500/10 px-2 py-1 rounded">${(tp.picks||[]).filter(p=>p.team_id===1).length} picked</span>
+                </div>
+                <div class="space-y-1 min-h-[60px]">
+                  ${team1Picks}
+                </div>
+              </div>
+            </div>
+            <div class="card bg-gradient-to-br from-red-900/10 to-red-800/5 border-2 border-red-500/20 shadow-lg">
+              <div class="card-body p-4">
+                <div class="flex items-center justify-between mb-3">
+                  <div class="text-sm font-semibold text-red-400 flex items-center gap-2">
+                    <span class="w-3 h-3 bg-red-500 rounded-full shadow-sm"></span>
+                    Team 2
+                  </div>
+                  <span class="text-xs opacity-60 bg-red-500/10 px-2 py-1 rounded">${(tp.picks||[]).filter(p=>p.team_id===2).length} picked</span>
+                </div>
+                <div class="space-y-1 min-h-[60px]">
+                  ${team2Picks}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="border-t border-base-300/50 pt-6">
+          <div class="mb-4">
+            <h4 class="text-sm font-semibold text-base-content/80 mb-3 flex items-center gap-2">
+              <span class="w-2 h-2 bg-accent rounded-full shadow-sm"></span>
+              Available Players
+            </h4>
+            <div class="bg-base-200/30 rounded-lg p-4 min-h-[60px]">
+              <div class="flex flex-wrap gap-2" id="tpRoster">
+                ${rosterHtml || '<span class="opacity-70 text-sm italic">No eligible players</span>'}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="border-t border-base-300/50 pt-6 flex flex-wrap gap-3">
+          <button id="tpPickRandom" class="btn btn-sm btn-outline btn-accent shadow-md hover:shadow-lg transition-shadow" ${eligible.length===0?'disabled':''}>
+            🎲 Pick random
+          </button>
+          <button id="tpFinalize" class="btn btn-sm btn-primary shadow-lg hover:shadow-xl transition-shadow">
+            ✅ Finalize
+          </button>
+          <button id="tpRestart" class="btn btn-sm btn-outline btn-warning shadow-md hover:shadow-lg transition-shadow">
+            🔄 Restart
+          </button>
         </div>
       </div>`;
     const btnCoin = document.getElementById('tpCoin');
