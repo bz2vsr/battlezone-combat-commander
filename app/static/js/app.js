@@ -368,14 +368,36 @@
   // Players online sidebar — refresh periodically
   async function refreshOnline(){
     try {
-      // Prefer site-online when logged in for presence, fallback to in-game
-      const r1 = await fetch('/api/v1/players/site-online');
-      const j1 = await r1.json();
-      const players = (j1 && Array.isArray(j1.players)) ? j1.players : null;
+      // Prefer site-online when logged in for presence; fallback to in-game unique players
+      let players = [];
+      try {
+        const r1 = await fetch('/api/v1/players/site-online');
+        const j1 = await r1.json();
+        if (j1 && Array.isArray(j1.players) && j1.players.length > 0) {
+          players = j1.players.map(p=>({
+            name: p.display_name || p.id,
+            avatar: p.avatar,
+            profile: p.profile
+          }));
+        }
+      } catch {}
+      if (players.length === 0) {
+        try {
+          const r2 = await fetch('/api/v1/players/online');
+          const j2 = await r2.json();
+          if (j2 && Array.isArray(j2.players)) {
+            players = j2.players.map(p=>({
+              name: (p.steam && (p.steam.nickname)) || p.name,
+              avatar: p.steam && p.steam.avatar,
+              profile: p.steam && p.steam.url
+            }));
+          }
+        } catch {}
+      }
       if (onlineList) {
         const items = (players || []).map(p=>{
           const av = p.avatar ? `<img src="${p.avatar}" class="tp-avatar-sm mr-2"/>` : '';
-          const name = p.display_name || p.id || 'Player';
+          const name = p.name || 'Player';
           const href = p.profile || '#';
           return `<a class="flex items-center text-sm mb-1" href="${href}" target="_blank" rel="noopener">${av}<span class="truncate">${name}</span></a>`;
         }).join('');
