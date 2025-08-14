@@ -143,15 +143,24 @@
             const isPre = (s.state === 'PreGame');
             const needTwo = '<div class="text-xs opacity-70">Team Picker requires both commanders to be signed in.</div>';
             mBody.innerHTML = `<div class="space-y-4">
-              <div class="text-sm opacity-80">No Team Picker is active for this session.</div>
+              <div class="text-sm opacity-80">No Team Picker has been started for this session yet.</div>
               ${!isPre?'<div class="alert bg-base-200 border border-base-300 text-xs">Team Picker is only available in PreGame.</div>':''}
               ${needTwo}
               <div><button id="tpStart" class="btn btn-sm btn-primary mt-2" ${!isPre?'disabled':''}>Start Team Picker</button></div>
+              <div id="tpStartErr" class="text-xs text-error"></div>
             </div>`;
             daisyModal.showModal();
             const btn = document.getElementById('tpStart');
             if (btn) btn.onclick = async ()=>{
-              try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/start`, {method:'POST', headers:{'Content-Type':'application/json'}}); } catch {}
+              try {
+                const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/start`, {method:'POST', headers:{'Content-Type':'application/json'}});
+                if (!resp.ok) {
+                  let msg = 'Unable to start Team Picker.';
+                  try { const j = await resp.json(); if (j && j.error === 'missing_commanders') msg = 'Could not detect two commanders. Team Picker requires two commanders with Steam IDs.'; if (j && j.error === 'not_pregame') msg = 'Team Picker is only available while the game is in PreGame.'; } catch {}
+                  const err = document.getElementById('tpStartErr'); if (err) { err.textContent = msg; }
+                  return;
+                }
+              } catch {}
               try { const r = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j = await r.json(); renderTP(j.session); } catch {}
             };
             return;
@@ -197,12 +206,12 @@
             <div class="card bg-base-100 border border-base-300"><div class="card-body p-3 flex justify-end">${c2}</div></div>
           </div>`;
         mBody.innerHTML = `
-          <div class="space-y-6 md:space-y-7">
+          <div class="space-y-8 md:space-y-10">
             ${commandersTop}
             <div class="flex gap-2 items-center text-sm"><span class="badge-soft">${tp.state}</span>${coin}<span class="text-xs opacity-70">${tp.next_team?`Team ${tp.next_team}'s turn`:(!tp.coin_winner_team?'Run coin toss to begin':'')}</span></div>
             ${ (tp.accepted && (tp.accepted.commander1 || tp.accepted.commander2) && !(tp.accepted.commander1 && tp.accepted.commander2)) ? `<div class=\"alert bg-base-200 border border-base-300 text-xs\">Waiting for the other commander to finalize…</div>` : ''}
             <div class="alert bg-base-200 border border-base-300 text-xs">${waitingText}</div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">
                 <div class="flex items-center justify-between mb-2">
                   <div class="text-sm opacity-70">Team 1</div>
@@ -216,8 +225,8 @@
                 ${team2Picks}
               </div></div>
             </div>
-            <div class="flex flex-wrap gap-2" id="tpRoster">${rosterHtml || '<span class="opacity-70 text-sm">No eligible players</span>'}</div>
-            <div class="flex gap-2 pt-1">
+            <div class="flex flex-wrap gap-2 mt-1" id="tpRoster">${rosterHtml || '<span class="opacity-70 text-sm">No eligible players</span>'}</div>
+            <div class="flex gap-2 pt-2">
               <button id="tpPickRandom" class="btn btn-sm" ${eligible.length===0?'disabled':''}>Pick random</button>
               <button id="tpFinalize" class="btn btn-sm btn-primary">Finalize</button>
             </div>
