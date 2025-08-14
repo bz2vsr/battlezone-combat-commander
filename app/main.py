@@ -490,7 +490,7 @@ def create_app() -> Flask:
         cmd1 = payload.get("commander1_id")
         cmd2 = payload.get("commander2_id")
         from app.db import session_scope
-        from app.models import TeamPickSession, TeamPickParticipant, SessionPlayer, Session
+        from app.models import TeamPickSession, TeamPickParticipant, SessionPlayer, Session, SitePresence
         from sqlalchemy import select as _select
         with session_scope() as db:
             # Only allow for PreGame sessions
@@ -517,6 +517,19 @@ def create_app() -> Flask:
             if str(creator_provider) == "steam" and str(creator_external) not in (str(cmd1), str(cmd2)):
                 # Only allow a commander to start
                 return jsonify({"ok": False, "error": "forbidden"}), 403
+            # Require both commanders to be recently present on the site (signed in)
+            try:
+                from datetime import datetime as _dt, timedelta as _td
+                cutoff = _dt.utcnow() - _td(seconds=20)
+                present = db.execute(
+                    _select(SitePresence).where(
+                        (SitePresence.provider == 'steam') & (SitePresence.last_seen_at >= cutoff) & (SitePresence.external_id.in_([str(cmd1), str(cmd2)]))
+                    )
+                ).scalars().all()
+                if len(present) < 2:
+                    return jsonify({"ok": False, "error": "both_commanders_required"}), 400
+            except Exception:
+                pass
             # Close any existing open sessions for this game session
             open_rows = db.execute(
                 _select(TeamPickSession).where(TeamPickSession.session_id == session_id, TeamPickSession.state == "open")
@@ -545,6 +558,58 @@ def create_app() -> Flask:
         except Exception:
             pass
         return team_picker_get(session_id)
+
+    @app.post("/api/v1/team_picker/<path:session_id>/restart")
+    def team_picker_restart(session_id: str):
+        # Commander-only: cancel any existing pick session and start a new one with same commanders (or inferred)
+        uid = session.get('uid')
+        if not uid:
+            return jsonify({"ok": False, "error": "not_authenticated"}), 401
+        provider, external = uid.split(":", 1)
+        from app.db import session_scope
+        from app.models import TeamPickSession, TeamPickParticipant, Session, SessionPlayer
+        from sqlalchemy import select as _select
+        with session_scope() as db:
+            sess_row = db.get(Session, session_id)
+            if not sess_row or (sess_row.state or '').lower() != 'pregame'.lower():
+                return jsonify({"ok": False, "error": "not_pregame"}), 400
+            # Find existing pick session (any state), and extract commanders if present
+            existing = db.execute(
+                _select(TeamPickSession).where(TeamPickSession.session_id == session_id).order_by(TeamPickSession.id.desc())
+            ).scalars().first()
+            cmd1 = None; cmd2 = None
+            if existing:
+                parts = db.execute(
+                    _select(TeamPickParticipant).where(TeamPickParticipant.pick_session_id == existing.id)
+                ).scalars().all()
+                for pr in parts:
+                    if pr.role == 'commander1' and pr.provider == 'steam':
+                        cmd1 = pr.external_id
+                    elif pr.role == 'commander2' and pr.provider == 'steam':
+                        cmd2 = pr.external_id
+                # Cancel any open session
+                if existing.state == 'open':
+                    from datetime import datetime as _dt
+                    existing.state = 'canceled'
+                    existing.closed_at = _dt.utcnow()
+            # Infer commanders if missing
+            if not cmd1 or not cmd2:
+                rows = db.execute(
+                    _select(SessionPlayer).where(SessionPlayer.session_id == session_id).order_by(SessionPlayer.slot.asc())
+                ).scalars().all()
+                cands = []
+                for sp in rows:
+                    if sp.is_host and sp.stats and sp.stats.get("steam_id"):
+                        cands.append(str(sp.stats.get("steam_id")))
+                if len(cands) >= 2:
+                    if not cmd1:
+                        cmd1 = cands[0]
+                    if not cmd2:
+                        cmd2 = cands[1]
+            # Delegate to start logic by recreating a new session with same commanders
+        # Call start endpoint logic by making a local request-like call
+        with app.test_request_context(json={"commander1_id": cmd1, "commander2_id": cmd2}):
+            return team_picker_start(session_id)
 
     @app.post("/api/v1/team_picker/<path:session_id>/coin_toss")
     def team_picker_coin_toss(session_id: str):
