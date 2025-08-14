@@ -367,6 +367,8 @@
   const onlineList = document.getElementById('onlineList');
   let presenceTimer = null;
   const modalCloseX = document.getElementById('appModalCloseX');
+  // Track Team Picker invite prompts to avoid repeat spam
+  const tpNotified = new Map(); // session_id -> expiresAt (ms)
 
   async function fetchMe(){ try { const r = await fetch('/api/v1/me'); return await r.json(); } catch { return {user:null}; } }
 
@@ -472,8 +474,14 @@
       const j = await r.json();
       const items = (j && Array.isArray(j.items)) ? j.items : [];
       if (!items.length) return;
-      // Show a minimal prompt for the first one
-      const s = items[0];
+      // Pick the first session we haven't prompted for recently
+      let s = null;
+      const now = Date.now();
+      for (const it of items) {
+        const exp = tpNotified.get(it.session_id) || 0;
+        if (now > exp) { s = it; break; }
+      }
+      if (!s) return;
       const title = document.getElementById('appModalTitle');
       const body = document.getElementById('appModalBody');
       if (title && body) {
@@ -490,8 +498,26 @@
           <div class="flex gap-2"><button id="tpOpenFromPrompt" class="btn btn-sm btn-primary">Open</button><button id="tpDismiss" class="btn btn-sm">Dismiss</button></div>
         </div>`;
         document.getElementById('appModal')?.showModal();
-        const openBtn = document.getElementById('tpOpenFromPrompt'); if (openBtn) openBtn.onclick = ()=>{ document.getElementById('appModal')?.close(); try { fetch(`/api/v1/team_picker/${encodeURIComponent(s.session_id)}` ).then(r=>r.json()).then(j=>{ const t=j.session; if(!t) return; const tTitle=document.getElementById('appModalTitle'); const tBody=document.getElementById('appModalBody'); if(tTitle) tTitle.textContent='Team Picker'; if(tBody){ /* reuse existing renderer */ } }); } catch {} };
+        const openBtn = document.getElementById('tpOpenFromPrompt');
+        if (openBtn) openBtn.onclick = async ()=>{
+          document.getElementById('appModal')?.close();
+          try {
+            const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.session_id)}`);
+            const out = await resp.json();
+            if (!out || !out.session) { return; }
+            const t = out.session;
+            const tTitle=document.getElementById('appModalTitle');
+            const tBody=document.getElementById('appModalBody');
+            if (tTitle) tTitle.textContent='Team Picker';
+            if (tBody) {
+              // Render and open just like clicking a card
+              (function renderTP(tp){ /* placeholder: reference existing function in scope */ })();
+            }
+          } catch {}
+        };
         const dismissBtn = document.getElementById('tpDismiss'); if (dismissBtn) dismissBtn.onclick = ()=>{ document.getElementById('appModal')?.close(); };
+        // Remember we showed this prompt for a short time window (2 min)
+        tpNotified.set(s.session_id, now + 120000);
       }
     } catch {}
   }
