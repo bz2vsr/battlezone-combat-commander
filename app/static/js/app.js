@@ -60,10 +60,21 @@
 
   function render(data) {
     if (!grid) return;
-    grid.innerHTML = '';
+    
     const sessionsRaw = data.sessions || [];
     const sessions = sortSessions(sessionsRaw);
+    
+    // Create a map of existing cards by session ID
+    const existingCards = new Map();
+    Array.from(grid.children).forEach(card => {
+      const sessionId = card.dataset.sessionId;
+      if (sessionId) {
+        existingCards.set(sessionId, card);
+      }
+    });
+    
     if (sessions.length === 0) {
+      grid.innerHTML = '';
       const empty = document.createElement('div');
       empty.className = 'col-span-full';
       empty.setAttribute('aria-live', 'polite');
@@ -72,191 +83,317 @@
       grid.appendChild(empty);
       return;
     }
-    sessions.forEach(s => {
-      const card = document.createElement('div');
-      card.className = 'card bg-base-200 border border-base-300 cursor-pointer p-3';
+    
+    // Track which sessions we've processed
+    const processedSessions = new Set();
+    
+    sessions.forEach((s, index) => {
+      processedSessions.add(s.id);
+      const existingCard = existingCards.get(s.id);
+      
+      if (existingCard) {
+        // Update existing card
+        updateExistingCard(existingCard, s, index);
+      } else {
+        // Create new card
+        const card = createNewCard(s);
+        // Insert at the correct position
+        const nextCard = grid.children[index];
+        if (nextCard) {
+          grid.insertBefore(card, nextCard);
+        } else {
+          grid.appendChild(card);
+        }
+      }
+    });
+    
+    // Remove cards for sessions that no longer exist
+    existingCards.forEach((card, sessionId) => {
+      if (!processedSessions.has(sessionId)) {
+        card.remove();
+      }
+    });
+    
+    // Ensure cards are in the correct order
+    sessions.forEach((s, index) => {
+      const card = Array.from(grid.children).find(c => c.dataset.sessionId === s.id);
+      if (card && card !== grid.children[index]) {
+        const nextCard = grid.children[index];
+        if (nextCard) {
+          grid.insertBefore(card, nextCard);
+        } else {
+          grid.appendChild(card);
+        }
+      }
+    });
+  }
+
+  function updateExistingCard(card, s, index) {
+    // Update badges section
+    const badgesSection = card.querySelector('.session-badges');
+    if (badgesSection) {
+      const a = s.attributes || {};
+      badgesSection.innerHTML = `
+        <span class="${((s.state||'')==='InGame') ? 'badge-accent-soft' : 'badge-soft'}">${s.state || 'Unknown'}</span>
+        ${s.nat_type ? `<span class=\"badge-soft\">${s.nat_type}</span>` : ''}
+        ${a.worst_ping!=null ? `<span class=\"badge-soft\" title=\"Worst ping seen\">Worst ${a.worst_ping}ms</span>` : ''}
+        ${a.game_mode ? `<span class=\"badge-soft\" title=\"Game mode\">${a.game_mode}</span>` : ''}
+        ${a.time_limit!=null ? `<span class=\"badge-soft\" title=\"Time limit\">TL ${a.time_limit}m</span>` : ''}
+        ${a.kill_limit!=null ? `<span class=\"badge-soft\" title=\"Kill limit\">KL ${a.kill_limit}</span>` : ''}
+        <span class="ml-auto text-xs opacity-70">${(s.players||[]).length}${(s.attributes && s.attributes.max_players)? '/'+s.attributes.max_players : ''} players</span>
+      `;
+    }
+    
+    // Update session info
+    const sessionInfo = card.querySelector('.session-info');
+    if (sessionInfo) {
+      sessionInfo.innerHTML = `
+        <h3 class="text-lg">${(s.name || s.id)}</h3>
+        <div class="text-xs opacity-70">${s.id}</div>
+        <div class="text-xs opacity-70">${s.level && s.level.name ? ('Map: ' + s.level.name) : (s.map_file? ('Map: ' + s.map_file) : '')}
+          ${s.mod_details && (s.mod_details.name || s.mod) ? (' • Mod: ' + (s.mod_details.url ? (`<a class=\"link\" href=\"${s.mod_details.url}\" target=\"_blank\" rel=\"noopener\">${s.mod_details.name || s.mod}</a>`) : (s.mod_details.name || s.mod))) : ''}
+        </div>
+      `;
+    }
+    
+    // Handle map image - only update if different
+    const mapImageContainer = card.querySelector('.map-image-container');
+    const newImageSrc = s.level && s.level.image ? s.level.image : null;
+    
+    if (newImageSrc) {
+      if (mapImageContainer) {
+        const existingImg = mapImageContainer.querySelector('img');
+        if (!existingImg || existingImg.src !== newImageSrc) {
+          mapImageContainer.innerHTML = `<div class="card bg-base-100 border border-base-300"><div class="card-body p-3"><img alt="map" class="map-thumb" src="${newImageSrc}"/></div></div>`;
+        }
+      } else {
+        // Create new image container
+        const imageDiv = document.createElement('div');
+        imageDiv.className = 'mt-2 map-image-container';
+        imageDiv.innerHTML = `<div class="card bg-base-100 border border-base-300"><div class="card-body p-3"><img alt="map" class="map-thumb" src="${newImageSrc}"/></div></div>`;
+        
+        const playersSection = card.querySelector('.players-section');
+        if (playersSection) {
+          card.insertBefore(imageDiv, playersSection);
+        } else {
+          card.appendChild(imageDiv);
+        }
+      }
+    } else if (mapImageContainer) {
+      // Remove image container if no image
+      mapImageContainer.remove();
+    }
+    
+    // Update players section
+    const playersSection = card.querySelector('.players-section');
+    if (playersSection) {
       const title = (((s.level && s.level.name) || '') + ' ' + ((s.name || ''))).toLowerCase();
       const isFFA = /(ffa|deathmatch|\bdm\b)/.test(title);
-      const playersHtml = `
-        <div class="mt-2 text-sm leading-6">
-          ${(s.players||[]).map(p => {
-            const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
-            const isStar = (p.is_host || p.slot===1 || p.slot===6);
-            const avatar = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" alt="" class="w-4 h-4 rounded-full mr-2 flex-none"/>` : '';
-            return `<div class="flex items-center truncate">${isStar?'<span class=\"mr-2\">★</span>':''}${avatar}<span class="truncate">${nick}</span></div>`;
-          }).join('')}
-        </div>`;
-      const teamsHtml = `
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2 items-stretch">
-          <div class="card bg-base-100 border border-base-300 h-full"><div class="card-body p-3 h-full">
-            <h4 class="text-sm opacity-70 mb-1">Team 1</h4>
-                        ${(s.players||[]).filter(p=>!p.team_id || p.team_id===1).map(p => {
-                          const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
-                          const isStar = (p.is_host || p.slot===1 || p.slot===6);
-                          const avatar = (p.steam && p.steam.avatar) ? `<img src=\"${p.steam.avatar}\" alt=\"\" class=\"w-4 h-4 rounded-full mr-2 flex-none\"/>` : '';
-                          return `<div class=\"flex items-center truncate\">${isStar?'<span class=\\\"mr-2\\\">★</span>':''}${avatar}<span class=\"truncate\">${nick}</span></div>`;
-                        }).join('') || '<span class="opacity-70 text-xs">Open</span>'}
-            <div class="grow"></div>
-          </div></div>
-          <div class="card bg-base-100 border border-base-300 h-full"><div class="card-body p-3 h-full">
-            <h4 class="text-sm opacity-70 mb-1">Team 2</h4>
-                        ${(s.players||[]).filter(p=>p.team_id===2).map(p => {
-                          const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
-                          const isStar = (p.is_host || p.slot===1 || p.slot===6);
-                          const avatar = (p.steam && p.steam.avatar) ? `<img src=\"${p.steam.avatar}\" alt=\"\" class=\"w-4 h-4 rounded-full mr-2 flex-none\"/>` : '';
-                          return `<div class=\"flex items-center truncate\">${isStar?'<span class=\\\"mr-2\\\">★</span>':''}${avatar}<span class=\"truncate\">${nick}</span></div>`;
-                        }).join('') || '<span class="opacity-70 text-xs">Open</span>'}
-            <div class="grow"></div>
-          </div></div>
-        </div>`;
-      const a = s.attributes || {};
-      card.innerHTML = `
-        <div class="flex flex-wrap gap-2 items-center">
-          <span class="${((s.state||'')==='InGame') ? 'badge-accent-soft' : 'badge-soft'}">${s.state || 'Unknown'}</span>
-          ${s.nat_type ? `<span class=\"badge-soft\">${s.nat_type}</span>` : ''}
-          ${a.worst_ping!=null ? `<span class=\"badge-soft\" title=\"Worst ping seen\">Worst ${a.worst_ping}ms</span>` : ''}
-          ${a.game_mode ? `<span class=\"badge-soft\" title=\"Game mode\">${a.game_mode}</span>` : ''}
-          ${a.time_limit!=null ? `<span class=\"badge-soft\" title=\"Time limit\">TL ${a.time_limit}m</span>` : ''}
-          ${a.kill_limit!=null ? `<span class=\"badge-soft\" title=\"Kill limit\">KL ${a.kill_limit}</span>` : ''}
-          <span class="ml-auto text-xs opacity-70">${(s.players||[]).length}${(s.attributes && s.attributes.max_players)? '/'+s.attributes.max_players : ''} players</span>
-        </div>
-        <div class="mt-1 card bg-base-100 border border-base-300">
-          <div class="card-body p-3">
-            <h3 class="text-lg">${(s.name || s.id)}</h3>
-            <div class="text-xs opacity-70">${s.id}</div>
-            <div class="text-xs opacity-70">${s.level && s.level.name ? ('Map: ' + s.level.name) : (s.map_file? ('Map: ' + s.map_file) : '')}
-              ${s.mod_details && (s.mod_details.name || s.mod) ? (' • Mod: ' + (s.mod_details.url ? (`<a class=\"link\" href=\"${s.mod_details.url}\" target=\"_blank\" rel=\"noopener\">${s.mod_details.name || s.mod}</a>`) : (s.mod_details.name || s.mod))) : ''}
-            </div>
+      
+      if (isFFA) {
+        playersSection.innerHTML = getPlayersHtml(s);
+      } else {
+        playersSection.innerHTML = getTeamsHtml(s);
+      }
+    }
+  }
+
+  function createNewCard(s) {
+    const card = document.createElement('div');
+    card.className = 'card bg-base-200 border border-base-300 cursor-pointer p-3';
+    card.dataset.sessionId = s.id;
+    
+    const title = (((s.level && s.level.name) || '') + ' ' + ((s.name || ''))).toLowerCase();
+    const isFFA = /(ffa|deathmatch|\bdm\b)/.test(title);
+    const a = s.attributes || {};
+    
+    card.innerHTML = `
+      <div class="flex flex-wrap gap-2 items-center session-badges">
+        <span class="${((s.state||'')==='InGame') ? 'badge-accent-soft' : 'badge-soft'}">${s.state || 'Unknown'}</span>
+        ${s.nat_type ? `<span class=\"badge-soft\">${s.nat_type}</span>` : ''}
+        ${a.worst_ping!=null ? `<span class=\"badge-soft\" title=\"Worst ping seen\">Worst ${a.worst_ping}ms</span>` : ''}
+        ${a.game_mode ? `<span class=\"badge-soft\" title=\"Game mode\">${a.game_mode}</span>` : ''}
+        ${a.time_limit!=null ? `<span class=\"badge-soft\" title=\"Time limit\">TL ${a.time_limit}m</span>` : ''}
+        ${a.kill_limit!=null ? `<span class=\"badge-soft\" title=\"Kill limit\">KL ${a.kill_limit}</span>` : ''}
+        <span class="ml-auto text-xs opacity-70">${(s.players||[]).length}${(s.attributes && s.attributes.max_players)? '/'+s.attributes.max_players : ''} players</span>
+      </div>
+      <div class="mt-1 card bg-base-100 border border-base-300">
+        <div class="card-body p-3 session-info">
+          <h3 class="text-lg">${(s.name || s.id)}</h3>
+          <div class="text-xs opacity-70">${s.id}</div>
+          <div class="text-xs opacity-70">${s.level && s.level.name ? ('Map: ' + s.level.name) : (s.map_file? ('Map: ' + s.map_file) : '')}
+            ${s.mod_details && (s.mod_details.name || s.mod) ? (' • Mod: ' + (s.mod_details.url ? (`<a class=\"link\" href=\"${s.mod_details.url}\" target=\"_blank\" rel=\"noopener\">${s.mod_details.name || s.mod}</a>`) : (s.mod_details.name || s.mod))) : ''}
           </div>
         </div>
-        ${s.level && s.level.image ? `<div class="mt-2 card bg-base-100 border border-base-300"><div class="card-body p-3"><img alt="map" class="map-thumb" src="${s.level.image}"/></div></div>` : ''}
-        ${isFFA ? playersHtml : teamsHtml}
-      `;
-      card.onclick = async () => {
-        try {
-          const res = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`);
-          const data = await res.json();
-          mTitle.textContent = 'Team Picker';
-          const sess = data && data.session;
-          if (!sess) {
-            // Gate: require PreGame and both commanders signed in
-            const isPre = (s.state === 'PreGame');
-            const needTwo = '<div class="text-xs opacity-70">Team Picker requires both commanders to be signed in.</div>';
-            mBody.innerHTML = `<div class="space-y-4">
-              <div class="text-sm opacity-80">No Team Picker has been started for this session yet.</div>
-              ${!isPre?'<div class="alert bg-base-200 border border-base-300 text-xs">Team Picker is only available in PreGame.</div>':''}
-              ${needTwo}
-              <div><button id="tpStart" class="btn btn-sm btn-primary mt-2" ${!isPre?'disabled':''}>Start Team Picker</button></div>
-              <div id="tpStartErr" class="text-xs text-error"></div>
-            </div>`;
-            daisyModal.showModal();
-            const btn = document.getElementById('tpStart');
-            if (btn) btn.onclick = async ()=>{
-              try {
-                const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/start`, {method:'POST', headers:{'Content-Type':'application/json'}});
-                if (!resp.ok) {
-                  let msg = 'Unable to start Team Picker.';
-                  try { const j = await resp.json(); if (j && j.error === 'missing_commanders') msg = 'Could not detect two commanders. Team Picker requires two commanders with Steam IDs.'; if (j && j.error === 'not_pregame') msg = 'Team Picker is only available while the game is in PreGame.'; } catch {}
-                  const err = document.getElementById('tpStartErr'); if (err) { err.textContent = msg; }
-                  return;
-                }
-              } catch {}
-              try { const r = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j = await r.json(); renderTP(j.session); } catch {}
-            };
-            return;
-          }
-          renderTP(sess);
+      </div>
+      ${s.level && s.level.image ? `<div class="mt-2 map-image-container"><div class="card bg-base-100 border border-base-300"><div class="card-body p-3"><img alt="map" class="map-thumb" src="${s.level.image}"/></div></div></div>` : ''}
+      <div class="players-section">${isFFA ? getPlayersHtml(s) : getTeamsHtml(s)}</div>
+    `;
+    
+    // Add click handler
+    card.onclick = async () => {
+      try {
+        const res = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`);
+        const data = await res.json();
+        mTitle.textContent = 'Team Picker';
+        const sess = data && data.session;
+        if (!sess) {
+          // Gate: require PreGame and both commanders signed in
+          const isPre = (s.state === 'PreGame');
+          const needTwo = '<div class="text-xs opacity-70">Team Picker requires both commanders to be signed in.</div>';
+          mBody.innerHTML = `<div class="space-y-4">
+            <div class="text-sm opacity-80">No Team Picker has been started for this session yet.</div>
+            ${!isPre?'<div class="alert bg-base-200 border border-base-300 text-xs">Team Picker is only available in PreGame.</div>':''}
+            ${needTwo}
+            <div><button id="tpStart" class="btn btn-sm btn-primary mt-2" ${!isPre?'disabled':''}>Start Team Picker</button></div>
+            <div id="tpStartErr" class="text-xs text-error"></div>
+          </div>`;
           daisyModal.showModal();
-        } catch {}
-      };
+          const btn = document.getElementById('tpStart');
+          if (btn) btn.onclick = async ()=>{
+            try {
+              const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/start`, {method:'POST', headers:{'Content-Type':'application/json'}});
+              if (!resp.ok) {
+                let msg = 'Unable to start Team Picker.';
+                try { const j = await resp.json(); if (j && j.error === 'missing_commanders') msg = 'Could not detect two commanders. Team Picker requires two commanders with Steam IDs.'; if (j && j.error === 'not_pregame') msg = 'Team Picker is only available while the game is in PreGame.'; } catch {}
+                const err = document.getElementById('tpStartErr'); if (err) { err.textContent = msg; }
+                return;
+              }
+            } catch {}
+            try { const r = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j = await r.json(); renderTP(j.session); } catch {}
+          };
+          return;
+        }
+        renderTP(sess);
+        daisyModal.showModal();
+      } catch {}
+    };
+    
+    return card;
+  }
 
-      function renderTP(tp){
-        const commander1 = (tp.participants||[]).find(p=>p.role==='commander1');
-        const commander2 = (tp.participants||[]).find(p=>p.role==='commander2');
-        const c1 = commander1 ? `<div class="flex items-center gap-2">${(commander1.steam&&commander1.steam.avatar)?`<img src="${commander1.steam.avatar}" class="tp-avatar"/>`:''}<span class="text-sm font-medium">${(commander1.steam&&commander1.steam.nickname)||commander1.id}</span></div>` : '';
-        const c2 = commander2 ? `<div class="flex items-center gap-2">${(commander2.steam&&commander2.steam.avatar)?`<img src="${commander2.steam.avatar}" class="tp-avatar"/>`:''}<span class="text-sm font-medium">${(commander2.steam&&commander2.steam.nickname)||commander2.id}</span></div>` : '';
+  function getPlayersHtml(s) {
+    return `
+      <div class="mt-2 text-sm leading-6">
+        ${(s.players||[]).map(p => {
+          const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
+          const isStar = (p.is_host || p.slot===1 || p.slot===6);
+          const avatar = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" alt="" class="w-4 h-4 rounded-full mr-2 flex-none"/>` : '';
+          return `<div class="flex items-center truncate">${isStar?'<span class=\"mr-2\">★</span>':''}${avatar}<span class="truncate">${nick}</span></div>`;
+        }).join('')}
+      </div>`;
+  }
 
-        const team1Picks = (tp.picks||[]).filter(p=>p.team_id===1).map(p=>{
-          const nick = (p.player&&p.player.steam&&p.player.steam.nickname) || p.player?.name || p.player?.steam_id || 'Player';
-          const av = (p.player&&p.player.steam&&p.player.steam.avatar)?`<img src="${p.player.steam.avatar}" class="tp-avatar-sm mr-2"/>`:'';
-          return `<div class="flex items-center text-sm">${av}<span class="truncate">${nick}</span></div>`;
-        }).join('') || '<span class="opacity-70 text-xs">No picks yet</span>';
-        const team2Picks = (tp.picks||[]).filter(p=>p.team_id===2).map(p=>{
-          const nick = (p.player&&p.player.steam&&p.player.steam.nickname) || p.player?.name || p.player?.steam_id || 'Player';
-          const av = (p.player&&p.player.steam&&p.player.steam.avatar)?`<img src="${p.player.steam.avatar}" class="tp-avatar-sm mr-2"/>`:'';
-          return `<div class="flex items-center text-sm">${av}<span class="truncate">${nick}</span></div>`;
-        }).join('') || '<span class="opacity-70 text-xs">No picks yet</span>';
-        const isMyTurn = (tp.your_role==='commander1' && tp.next_team===1) || (tp.your_role==='commander2' && tp.next_team===2);
-        const waitingText = !tp.coin_winner_team ? 'Run coin toss to begin' : (isMyTurn? 'Your turn' : `Waiting for ${(tp.next_team===1?(commander1&&((commander1.steam&&commander1.steam.nickname)||commander1.id)):(commander2&&((commander2.steam&&commander2.steam.nickname)||commander2.id))) || 'commander'} to pick`);
-        const coin = tp.coin_winner_team? `<span class="badge-soft">Coin: Team ${tp.coin_winner_team}</span>` : '<button id="tpCoin" class="btn btn-xs">Coin toss</button>';
-        const commanderIds = new Set([
-          commander1 && commander1.id ? String(commander1.id) : '',
-          commander2 && commander2.id ? String(commander2.id) : ''
-        ]);
-        const eligible = (tp.roster||[]).filter(r=>{
-          const sid = String(r.steam_id||'');
-          if (!sid) return false;
-          if (commanderIds.has(sid)) return false; // exclude commanders from pool
-          return !(tp.picks||[]).some(p=>p.player && String(p.player.steam_id)===sid);
-        });
-        const rosterHtml = eligible.map(r=>{ const nick = (r.steam&&r.steam.nickname) || r.name || r.steam_id; const av = (r.steam&&r.steam.avatar)?`<img src="${r.steam.avatar}" class="tp-avatar-sm mr-2"/>`:''; return `<button class="btn btn-xs" data-sid="${r.steam_id}" ${!tp.coin_winner_team?'disabled':''}>${av}<span class="truncate">${nick}</span></button>`; }).join(' ');
-        const commandersTop = `
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-0 mb-4 md:mb-6">
-            <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">${c1}</div></div>
-            <div class="card bg-base-100 border border-base-300"><div class="card-body p-3 flex justify-end">${c2}</div></div>
-          </div>`;
-        mBody.innerHTML = `
-          <div>
-            ${commandersTop}
-            <div class="flex gap-2 items-center text-sm mt-2 md:mt-3"><span class="badge-soft">${tp.state}</span>${coin}<span class="text-xs opacity-70">${tp.next_team?`Team ${tp.next_team}'s turn`:(!tp.coin_winner_team?'Run coin toss to begin':'')}</span></div>
-            ${ (tp.accepted && (tp.accepted.commander1 || tp.accepted.commander2) && !(tp.accepted.commander1 && tp.accepted.commander2)) ? `<div class=\"alert bg-base-200 border border-base-300 text-xs mt-2\">Waiting for the other commander to finalize…</div>` : ''}
-            <div class="alert bg-base-200 border border-base-300 text-xs mt-2 md:mt-3">${waitingText}</div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-3 md:mt-4">
-              <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">
-                <div class="flex items-center justify-between mb-2">
-                  <div class="text-sm opacity-70">Team 1</div>
-                </div>
-                ${team1Picks}
-              </div></div>
-              <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">
-                <div class="flex items-center justify-between mb-2">
-                  <div class="text-sm opacity-70">Team 2</div>
-                </div>
-                ${team2Picks}
-              </div></div>
-            </div>
-            <div class="flex flex-wrap gap-2 mt-3 md:mt-4" id="tpRoster">${rosterHtml || '<span class="opacity-70 text-sm">No eligible players</span>'}</div>
-            <div class="flex gap-2 mt-4 md:mt-5">
-              <button id="tpPickRandom" class="btn btn-sm" ${eligible.length===0?'disabled':''}>Pick random</button>
-              <button id="tpFinalize" class="btn btn-sm btn-primary">Finalize</button>
-              <button id="tpRestart" class="btn btn-sm">Restart</button>
-            </div>
-          </div>`;
-        const btnCoin = document.getElementById('tpCoin');
-        if (btnCoin) btnCoin.onclick = async ()=>{ const b=btnCoin; b.disabled=true; b.textContent='Tossing…'; setTimeout(async ()=>{ try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/coin_toss`, {method:'POST'}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {} }, 1200); };
-        const roster = document.getElementById('tpRoster');
-        if (roster) roster.querySelectorAll('button[data-sid]').forEach(btn=>{ btn.addEventListener('click', async ()=>{ const sid = btn.getAttribute('data-sid'); if(!sid) return; btn.disabled = true; try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/pick`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({player_steam_id: sid})}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {} }); });
-        const btnFin = document.getElementById('tpFinalize'); if (btnFin) btnFin.onclick = async ()=>{ try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/finalize`, {method:'POST'}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {} };
-        const btnRestart = document.getElementById('tpRestart'); if (btnRestart) btnRestart.onclick = async ()=>{ btnRestart.disabled=true; try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/restart`, {method:'POST'}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {} };
-        const btnRand = document.getElementById('tpPickRandom'); if (btnRand) btnRand.onclick = async ()=>{ if (!eligible || eligible.length===0) return; btnRand.disabled = true; const pick = eligible[Math.floor(Math.random()*eligible.length)]; try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/pick`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({player_steam_id: pick.steam_id})}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {} };
+  function getTeamsHtml(s) {
+    return `
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2 items-stretch">
+        <div class="card bg-base-100 border border-base-300 h-full"><div class="card-body p-3 h-full">
+          <h4 class="text-sm opacity-70 mb-1">Team 1</h4>
+                      ${(s.players||[]).filter(p=>!p.team_id || p.team_id===1).map(p => {
+                        const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
+                        const isStar = (p.is_host || p.slot===1 || p.slot===6);
+                        const avatar = (p.steam && p.steam.avatar) ? `<img src=\"${p.steam.avatar}\" alt=\"\" class=\"w-4 h-4 rounded-full mr-2 flex-none\"/>` : '';
+                        return `<div class=\"flex items-center truncate\">${isStar?'<span class=\\\"mr-2\\\">★</span>':''}${avatar}<span class=\"truncate\">${nick}</span></div>`;
+                      }).join('') || '<span class="opacity-70 text-xs">Open</span>'}
+          <div class="grow"></div>
+        </div></div>
+        <div class="card bg-base-100 border border-base-300 h-full"><div class="card-body p-3 h-full">
+          <h4 class="text-sm opacity-70 mb-1">Team 2</h4>
+                      ${(s.players||[]).filter(p=>p.team_id===2).map(p => {
+                        const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
+                        const isStar = (p.is_host || p.slot===1 || p.slot===6);
+                        const avatar = (p.steam && p.steam.avatar) ? `<img src=\"${p.steam.avatar}\" alt=\"\" class=\"w-4 h-4 rounded-full mr-2 flex-none\"/>` : '';
+                        return `<div class=\"flex items-center truncate\">${isStar?'<span class=\\\"mr-2\\\">★</span>':''}${avatar}<span class=\"truncate\">${nick}</span></div>`;
+                      }).join('') || '<span class="opacity-70 text-xs">Open</span>'}
+          <div class="grow"></div>
+        </div></div>
+      </div>`;
+  }
 
-        // If single-user testing and it's the other commander's turn, auto-pick after a short delay
-        try {
-          const yourRole = tp.your_role;
-          const nextTeam = tp.next_team;
-          if (tp.coin_winner_team && eligible.length > 0) {
-            if ((yourRole==='commander1' && nextTeam===2) || (yourRole==='commander2' && nextTeam===1) || (!yourRole && nextTeam===2)) {
-              setTimeout(async ()=>{
-                try { await fetch(`/admin/dev/team_picker/${encodeURIComponent(s.id)}/auto_pick`, {method:'POST'}); } catch {}
-                try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {}
-              }, 800);
-            }
-          }
-        } catch {}
-      }
-      grid.appendChild(card);
+  function renderTP(tp){
+    const commander1 = (tp.participants||[]).find(p=>p.role==='commander1');
+    const commander2 = (tp.participants||[]).find(p=>p.role==='commander2');
+    const c1 = commander1 ? `<div class="flex items-center gap-2">${(commander1.steam&&commander1.steam.avatar)?`<img src="${commander1.steam.avatar}" class="tp-avatar"/>`:''}<span class="text-sm font-medium">${(commander1.steam&&commander1.steam.nickname)||commander1.id}</span></div>` : '';
+    const c2 = commander2 ? `<div class="flex items-center gap-2">${(commander2.steam&&commander2.steam.avatar)?`<img src="${commander2.steam.avatar}" class="tp-avatar"/>`:''}<span class="text-sm font-medium">${(commander2.steam&&commander2.steam.nickname)||commander2.id}</span></div>` : '';
+
+    const team1Picks = (tp.picks||[]).filter(p=>p.team_id===1).map(p=>{
+      const nick = (p.player&&p.player.steam&&p.player.steam.nickname) || p.player?.name || p.player?.steam_id || 'Player';
+      const av = (p.player&&p.player.steam&&p.player.steam.avatar)?`<img src="${p.player.steam.avatar}" class="tp-avatar-sm mr-2"/>`:'';
+      return `<div class="flex items-center text-sm">${av}<span class="truncate">${nick}</span></div>`;
+    }).join('') || '<span class="opacity-70 text-xs">No picks yet</span>';
+    const team2Picks = (tp.picks||[]).filter(p=>p.team_id===2).map(p=>{
+      const nick = (p.player&&p.player.steam&&p.player.steam.nickname) || p.player?.name || p.player?.steam_id || 'Player';
+      const av = (p.player&&p.player.steam&&p.player.steam.avatar)?`<img src="${p.player.steam.avatar}" class="tp-avatar-sm mr-2"/>`:'';
+      return `<div class="flex items-center text-sm">${av}<span class="truncate">${nick}</span></div>`;
+    }).join('') || '<span class="opacity-70 text-xs">No picks yet</span>';
+    const isMyTurn = (tp.your_role==='commander1' && tp.next_team===1) || (tp.your_role==='commander2' && tp.next_team===2);
+    const waitingText = !tp.coin_winner_team ? 'Run coin toss to begin' : (isMyTurn? 'Your turn' : `Waiting for ${(tp.next_team===1?(commander1&&((commander1.steam&&commander1.steam.nickname)||commander1.id)):(commander2&&((commander2.steam&&commander2.steam.nickname)||commander2.id))) || 'commander'} to pick`);
+    const coin = tp.coin_winner_team? `<span class="badge-soft">Coin: Team ${tp.coin_winner_team}</span>` : '<button id="tpCoin" class="btn btn-xs">Coin toss</button>';
+    const commanderIds = new Set([
+      commander1 && commander1.id ? String(commander1.id) : '',
+      commander2 && commander2.id ? String(commander2.id) : ''
+    ]);
+    const eligible = (tp.roster||[]).filter(r=>{
+      const sid = String(r.steam_id||'');
+      if (!sid) return false;
+      if (commanderIds.has(sid)) return false; // exclude commanders from pool
+      return !(tp.picks||[]).some(p=>p.player && String(p.player.steam_id)===sid);
     });
-    // no-op: no skeleton placeholder behavior
+    const rosterHtml = eligible.map(r=>{ const nick = (r.steam&&r.steam.nickname) || r.name || r.steam_id; const av = (r.steam&&r.steam.avatar)?`<img src="${r.steam.avatar}" class="tp-avatar-sm mr-2"/>`:''; return `<button class="btn btn-xs" data-sid="${r.steam_id}" ${!tp.coin_winner_team?'disabled':''}>${av}<span class="truncate">${nick}</span></button>`; }).join(' ');
+    const commandersTop = `
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-0 mb-4 md:mb-6">
+        <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">${c1}</div></div>
+        <div class="card bg-base-100 border border-base-300"><div class="card-body p-3 flex justify-end">${c2}</div></div>
+      </div>`;
+    const sessionId = tp.session_id || tp.id;
+    mBody.innerHTML = `
+      <div>
+        ${commandersTop}
+        <div class="flex gap-2 items-center text-sm mt-2 md:mt-3"><span class="badge-soft">${tp.state}</span>${coin}<span class="text-xs opacity-70">${tp.next_team?`Team ${tp.next_team}'s turn`:(!tp.coin_winner_team?'Run coin toss to begin':'')}</span></div>
+        ${ (tp.accepted && (tp.accepted.commander1 || tp.accepted.commander2) && !(tp.accepted.commander1 && tp.accepted.commander2)) ? `<div class=\"alert bg-base-200 border border-base-300 text-xs mt-2\">Waiting for the other commander to finalize…</div>` : ''}
+        <div class="alert bg-base-200 border border-base-300 text-xs mt-2 md:mt-3">${waitingText}</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-3 md:mt-4">
+          <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-sm opacity-70">Team 1</div>
+            </div>
+            ${team1Picks}
+          </div></div>
+          <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-sm opacity-70">Team 2</div>
+            </div>
+            ${team2Picks}
+          </div></div>
+        </div>
+        <div class="flex flex-wrap gap-2 mt-3 md:mt-4" id="tpRoster">${rosterHtml || '<span class="opacity-70 text-sm">No eligible players</span>'}</div>
+        <div class="flex gap-2 mt-4 md:mt-5">
+          <button id="tpPickRandom" class="btn btn-sm" ${eligible.length===0?'disabled':''}>Pick random</button>
+          <button id="tpFinalize" class="btn btn-sm btn-primary">Finalize</button>
+          <button id="tpRestart" class="btn btn-sm">Restart</button>
+        </div>
+      </div>`;
+    const btnCoin = document.getElementById('tpCoin');
+    if (btnCoin) btnCoin.onclick = async ()=>{ const b=btnCoin; b.disabled=true; b.textContent='Tossing…'; setTimeout(async ()=>{ try { await fetch(`/api/v1/team_picker/${encodeURIComponent(sessionId)}/coin_toss`, {method:'POST'}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(sessionId)}`); const j=await r.json(); renderTP(j.session);} catch {} }, 1200); };
+    const roster = document.getElementById('tpRoster');
+    if (roster) roster.querySelectorAll('button[data-sid]').forEach(btn=>{ btn.addEventListener('click', async ()=>{ const sid = btn.getAttribute('data-sid'); if(!sid) return; btn.disabled = true; try { await fetch(`/api/v1/team_picker/${encodeURIComponent(sessionId)}/pick`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({player_steam_id: sid})}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(sessionId)}`); const j=await r.json(); renderTP(j.session);} catch {} }); });
+    const btnFin = document.getElementById('tpFinalize'); if (btnFin) btnFin.onclick = async ()=>{ try { await fetch(`/api/v1/team_picker/${encodeURIComponent(sessionId)}/finalize`, {method:'POST'}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(sessionId)}`); const j=await r.json(); renderTP(j.session);} catch {} };
+    const btnRestart = document.getElementById('tpRestart'); if (btnRestart) btnRestart.onclick = async ()=>{ btnRestart.disabled=true; try { await fetch(`/api/v1/team_picker/${encodeURIComponent(sessionId)}/restart`, {method:'POST'}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(sessionId)}`); const j=await r.json(); renderTP(j.session);} catch {} };
+    const btnRand = document.getElementById('tpPickRandom'); if (btnRand) btnRand.onclick = async ()=>{ if (!eligible || eligible.length===0) return; btnRand.disabled = true; const pick = eligible[Math.floor(Math.random()*eligible.length)]; try { await fetch(`/api/v1/team_picker/${encodeURIComponent(sessionId)}/pick`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({player_steam_id: pick.steam_id})}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(sessionId)}`); const j=await r.json(); renderTP(j.session);} catch {} };
+
+    // If single-user testing and it's the other commander's turn, auto-pick after a short delay
+    try {
+      const yourRole = tp.your_role;
+      const nextTeam = tp.next_team;
+      if (tp.coin_winner_team && eligible.length > 0) {
+        if ((yourRole==='commander1' && nextTeam===2) || (yourRole==='commander2' && nextTeam===1) || (!yourRole && nextTeam===2)) {
+          setTimeout(async ()=>{
+            try { await fetch(`/admin/dev/team_picker/${encodeURIComponent(sessionId)}/auto_pick`, {method:'POST'}); } catch {}
+            try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(sessionId)}`); const j=await r.json(); renderTP(j.session);} catch {}
+          }, 800);
+        }
+      }
+    } catch {}
   }
 
   function url() {
