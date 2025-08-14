@@ -212,8 +212,8 @@
             </div>
             <div class="flex flex-wrap gap-2" id="tpRoster">${rosterHtml || '<span class="opacity-70 text-sm">No eligible players</span>'}</div>
             <div class="flex gap-2">
-              <button id="tpFinalize" class="btn btn-sm">Finalize</button>
-              ${location.hostname==='localhost'? `<button id="tpAuto" class="btn btn-sm" ${eligible.length===0?'disabled':''}>Auto-pick other commander</button>` : ''}
+              <button id="tpPickRandom" class="btn btn-sm" ${eligible.length===0?'disabled':''}>Pick random</button>
+              <button id="tpFinalize" class="btn btn-sm btn-primary">Finalize</button>
             </div>
           </div>`;
         const btnCoin = document.getElementById('tpCoin');
@@ -221,7 +221,7 @@
         const roster = document.getElementById('tpRoster');
         if (roster) roster.querySelectorAll('button[data-sid]').forEach(btn=>{ btn.addEventListener('click', async ()=>{ const sid = btn.getAttribute('data-sid'); if(!sid) return; btn.disabled = true; try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/pick`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({player_steam_id: sid})}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {} }); });
         const btnFin = document.getElementById('tpFinalize'); if (btnFin) btnFin.onclick = async ()=>{ try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/finalize`, {method:'POST'}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {} };
-        const btnAuto = document.getElementById('tpAuto'); if (btnAuto) btnAuto.onclick = async ()=>{ btnAuto.disabled = true; try { await fetch(`/admin/dev/team_picker/${encodeURIComponent(s.id)}/auto_pick`, {method:'POST'}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {} };
+        const btnRand = document.getElementById('tpPickRandom'); if (btnRand) btnRand.onclick = async ()=>{ if (!eligible || eligible.length===0) return; btnRand.disabled = true; const pick = eligible[Math.floor(Math.random()*eligible.length)]; try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/pick`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({player_steam_id: pick.steam_id})}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {} };
 
         // If single-user testing and it's the other commander's turn, auto-pick after a short delay
         try {
