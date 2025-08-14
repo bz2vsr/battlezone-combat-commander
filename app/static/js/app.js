@@ -187,7 +187,7 @@
           return `<div class="flex items-center text-sm">${av}<span class="truncate">${nick}</span></div>`;
         }).join('') || '<span class="opacity-70 text-xs">No picks yet</span>';
         const isMyTurn = (tp.your_role==='commander1' && tp.next_team===1) || (tp.your_role==='commander2' && tp.next_team===2);
-        const waitingText = !tp.coin_winner_team ? 'Run coin toss to begin' : (isMyTurn? 'Your turn' : `Waiting for ${(tp.next_team===1?(commander1&&((commander1.steam&&commander1.steam.nickname)||commander1.id)):(commander2&&((commander2.steam&&commander2.steam.nickname)||commander2.id))) || 'commander'} to pick`);
+        const waitingText = !tp.coin_winner_team ? 'Run coin toss to begin' : (tp.picks_complete ? 'All players selected. Please finalize the roster.' : (isMyTurn? 'Your turn' : `Waiting for ${(tp.next_team===1?(commander1&&((commander1.steam&&commander1.steam.nickname)||commander1.id)):(commander2&&((commander2.steam&&commander2.steam.nickname)||commander2.id))) || 'commander'} to pick`));
         const coin = tp.coin_winner_team? `<span class="badge-soft">Coin: Team ${tp.coin_winner_team}</span>` : '<button id="tpCoin" class="btn btn-xs">Coin toss</button>';
         const commanderIds = new Set([
           commander1 && commander1.id ? String(commander1.id) : '',
@@ -228,7 +228,7 @@
             <div class="flex flex-wrap gap-2 mt-3 md:mt-4" id="tpRoster">${rosterHtml || '<span class="opacity-70 text-sm">No eligible players</span>'}</div>
             <div class="flex gap-2 mt-4 md:mt-5">
               <button id="tpPickRandom" class="btn btn-sm" ${eligible.length===0?'disabled':''}>Pick random</button>
-              <button id="tpFinalize" class="btn btn-sm btn-primary">Finalize</button>
+              <button id="tpFinalize" class="btn btn-sm btn-primary" ${tp.picks_complete?'' : 'disabled'}>Finalize</button>
               <button id="tpRestart" class="btn btn-sm">Restart</button>
             </div>
           </div>`;

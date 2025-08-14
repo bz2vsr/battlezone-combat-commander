@@ -419,9 +419,22 @@ def create_app() -> Flask:
                         "nickname": (player.display_name if player else None),
                         "avatar": (player.avatar_url if player else None),
                     }
-            # Compute next team
+            # Compute remaining eligible players and next team only if any remain
+            commander_ids = set(str(r.external_id) for r in parts if r.role in ("commander1", "commander2") and r.provider == "steam")
+            picked_ids = set(p.player_steam_id for p in picks if p.player_steam_id)
+            remaining = 0
+            for rr in roster_rows:
+                sid = (rr.stats or {}).get("steam_id")
+                if not sid:
+                    continue
+                sid = str(sid)
+                if sid in commander_ids:
+                    continue
+                if sid in picked_ids:
+                    continue
+                remaining += 1
             next_team = None
-            if tps.coin_winner_team is not None:
+            if tps.coin_winner_team is not None and remaining > 0:
                 next_team = tps.coin_winner_team if (len(picks) % 2 == 0) else (2 if tps.coin_winner_team == 1 else 1)
             # Determine caller role
             me_role = None
@@ -440,6 +453,7 @@ def create_app() -> Flask:
                 "coin_winner_team": tps.coin_winner_team,
                 "next_team": next_team,
                 "your_role": me_role,
+                "picks_complete": remaining == 0,
                 "max_team_size": 5,
                 "created_at": tps.created_at.isoformat() if tps.created_at else None,
                 "closed_at": tps.closed_at.isoformat() if tps.closed_at else None,
