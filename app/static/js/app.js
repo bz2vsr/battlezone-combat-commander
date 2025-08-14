@@ -160,7 +160,7 @@
         const commander1 = (tp.participants||[]).find(p=>p.role==='commander1');
         const commander2 = (tp.participants||[]).find(p=>p.role==='commander2');
         const c1 = commander1 ? `<div class="flex items-center gap-2">${(commander1.steam&&commander1.steam.avatar)?`<img src="${commander1.steam.avatar}" class="tp-avatar"/>`:''}<span class="text-sm font-medium">${(commander1.steam&&commander1.steam.nickname)||commander1.id}</span></div>` : '';
-        const c2 = commander2 ? `<div class="flex items-center gap-2 justify-end">${(commander2.steam&&commander2.steam.avatar)?`<img src="${commander2.steam.avatar}" class="tp-avatar"/>`:''}<span class="text-sm font-medium">${(commander2.steam&&commander2.steam.nickname)||commander2.id}</span></div>` : '';
+        const c2 = commander2 ? `<div class="flex items-center gap-2">${(commander2.steam&&commander2.steam.avatar)?`<img src="${commander2.steam.avatar}" class="tp-avatar"/>`:''}<span class="text-sm font-medium">${(commander2.steam&&commander2.steam.nickname)||commander2.id}</span></div>` : '';
 
         const team1Picks = (tp.picks||[]).filter(p=>p.team_id===1).map(p=>{
           const nick = (p.player&&p.player.steam&&p.player.steam.nickname) || p.player?.name || p.player?.steam_id || 'Player';
@@ -186,9 +186,14 @@
           return !(tp.picks||[]).some(p=>p.player && String(p.player.steam_id)===sid);
         });
         const rosterHtml = eligible.map(r=>{ const nick = (r.steam&&r.steam.nickname) || r.name || r.steam_id; const av = (r.steam&&r.steam.avatar)?`<img src="${r.steam.avatar}" class="tp-avatar-sm mr-2"/>`:''; return `<button class="btn btn-xs" data-sid="${r.steam_id}" ${!tp.coin_winner_team?'disabled':''}>${av}<span class="truncate">${nick}</span></button>`; }).join(' ');
+        const commandersTop = `
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-0">
+            <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">${c1}</div></div>
+            <div class="card bg-base-100 border border-base-300"><div class="card-body p-3 flex justify-end">${c2}</div></div>
+          </div>`;
         mBody.innerHTML = `
           <div class="space-y-3">
-            <div class="flex items-center justify-between">${c1}${c2}</div>
+            ${commandersTop}
             <div class="flex gap-2 items-center text-sm"><span class="badge-soft">${tp.state}</span>${coin}<span class="text-xs opacity-70">${tp.next_team?`Team ${tp.next_team}'s turn`:(!tp.coin_winner_team?'Run coin toss to begin':'')}</span></div>
             <div class="alert bg-base-200 border border-base-300 text-xs">${waitingText}</div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -196,21 +201,19 @@
                 <div class="flex items-center justify-between mb-2">
                   <div class="text-sm opacity-70">Team 1</div>
                 </div>
-                ${commander1 ? `<div class=\"flex items-center text-sm mb-2\">${(commander1.steam&&commander1.steam.avatar)?`<img src=\"${commander1.steam.avatar}\" class=\"tp-avatar-sm mr-2\"/>`:''}<span class=\"truncate\">Commander 1: ${(commander1.steam&&commander1.steam.nickname)||commander1.id}</span></div>` : ''}
                 ${team1Picks}
               </div></div>
               <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">
                 <div class="flex items-center justify-between mb-2">
                   <div class="text-sm opacity-70">Team 2</div>
                 </div>
-                ${commander2 ? `<div class=\"flex items-center text-sm mb-2\">${(commander2.steam&&commander2.steam.avatar)?`<img src=\"${commander2.steam.avatar}\" class=\"tp-avatar-sm mr-2\"/>`:''}<span class=\"truncate\">Commander 2: ${(commander2.steam&&commander2.steam.nickname)||commander2.id}</span></div>` : ''}
                 ${team2Picks}
               </div></div>
             </div>
             <div class="flex flex-wrap gap-2" id="tpRoster">${rosterHtml || '<span class="opacity-70 text-sm">No eligible players</span>'}</div>
             <div class="flex gap-2">
               <button id="tpFinalize" class="btn btn-sm">Finalize</button>
-              ${location.hostname==='localhost'? '<button id="tpAuto" class="btn btn-sm">Auto-pick opponent</button>' : ''}
+              ${location.hostname==='localhost'? `<button id="tpAuto" class="btn btn-sm" ${eligible.length===0?'disabled':''}>Auto-pick other commander</button>` : ''}
             </div>
           </div>`;
         const btnCoin = document.getElementById('tpCoin');
@@ -218,7 +221,7 @@
         const roster = document.getElementById('tpRoster');
         if (roster) roster.querySelectorAll('button[data-sid]').forEach(btn=>{ btn.addEventListener('click', async ()=>{ const sid = btn.getAttribute('data-sid'); if(!sid) return; btn.disabled = true; try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/pick`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({player_steam_id: sid})}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {} }); });
         const btnFin = document.getElementById('tpFinalize'); if (btnFin) btnFin.onclick = async ()=>{ try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/finalize`, {method:'POST'}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {} };
-        const btnAuto = document.getElementById('tpAuto'); if (btnAuto) btnAuto.onclick = async ()=>{ try { await fetch(`/admin/dev/team_picker/${encodeURIComponent(s.id)}/auto_pick`, {method:'POST'}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {} };
+        const btnAuto = document.getElementById('tpAuto'); if (btnAuto) btnAuto.onclick = async ()=>{ btnAuto.disabled = true; try { await fetch(`/admin/dev/team_picker/${encodeURIComponent(s.id)}/auto_pick`, {method:'POST'}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {} };
 
         // If single-user testing and it's the other commander's turn, auto-pick after a short delay
         try {
