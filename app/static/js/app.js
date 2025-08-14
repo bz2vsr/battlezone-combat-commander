@@ -39,8 +39,7 @@
             const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
             const isStar = (p.is_host || p.slot===1 || p.slot===6);
             const avatar = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" alt="" class="w-4 h-4 rounded-full mr-2 flex-none"/>` : '';
-            const score = (p.score!=null? ` <span class=\"opacity-70 text-xs\">(score ${p.score})</span>` : '');
-            return `<div class="flex items-center truncate">${isStar?'<span class=\"mr-2\">★</span>':''}${avatar}<span class="truncate">${nick}</span>${score}</div>`;
+            return `<div class="flex items-center truncate">${isStar?'<span class=\"mr-2\">★</span>':''}${avatar}<span class="truncate">${nick}</span></div>`;
           }).join('')}
         </div>`;
       const teamsHtml = `
@@ -51,8 +50,7 @@
                           const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
                           const isStar = (p.is_host || p.slot===1 || p.slot===6);
                           const avatar = (p.steam && p.steam.avatar) ? `<img src=\"${p.steam.avatar}\" alt=\"\" class=\"w-4 h-4 rounded-full mr-2 flex-none\"/>` : '';
-                          const score = (p.score!=null? ` <span class=\\"opacity-70 text-xs\\">(score ${p.score})</span>` : '');
-                          return `<div class=\"flex items-center truncate\">${isStar?'<span class=\\"mr-2\\">★</span>':''}${avatar}<span class=\"truncate\">${nick}</span>${score}</div>`;
+                          return `<div class=\"flex items-center truncate\">${isStar?'<span class=\\\"mr-2\\\">★</span>':''}${avatar}<span class=\"truncate\">${nick}</span></div>`;
                         }).join('') || '<span class="opacity-70 text-xs">Open</span>'}
             <div class="grow"></div>
           </div></div>
@@ -62,8 +60,7 @@
                           const nick = (p.steam && p.steam.nickname) ? p.steam.nickname : (p.name || 'Player');
                           const isStar = (p.is_host || p.slot===1 || p.slot===6);
                           const avatar = (p.steam && p.steam.avatar) ? `<img src=\"${p.steam.avatar}\" alt=\"\" class=\"w-4 h-4 rounded-full mr-2 flex-none\"/>` : '';
-                          const score = (p.score!=null? ` <span class=\\"opacity-70 text-xs\\">(score ${p.score})</span>` : '');
-                          return `<div class=\"flex items-center truncate\">${isStar?'<span class=\\"mr-2\\">★</span>':''}${avatar}<span class=\"truncate\">${nick}</span>${score}</div>`;
+                          return `<div class=\"flex items-center truncate\">${isStar?'<span class=\\\"mr-2\\\">★</span>':''}${avatar}<span class=\"truncate\">${nick}</span></div>`;
                         }).join('') || '<span class="opacity-70 text-xs">Open</span>'}
             <div class="grow"></div>
           </div></div>
