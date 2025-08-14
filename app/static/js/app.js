@@ -116,13 +116,13 @@
         const picks = (tp.picks||[]).map(p=>`<div class="flex items-center justify-between text-sm"><span class="opacity-70">#${p.order}</span><span>Team ${p.team_id}</span><span class="truncate">${(p.player&&p.player.steam&&p.player.steam.nickname)||p.player.steam_id}</span></div>`).join('');
         const commander1 = (tp.participants||[]).find(p=>p.role==='commander1');
         const commander2 = (tp.participants||[]).find(p=>p.role==='commander2');
-        const c1 = commander1 ? `<div class="flex items-center gap-2">${(commander1.steam&&commander1.steam.avatar)?`<img src="${commander1.steam.avatar}" class="w-6 h-6 rounded-full"/>`:''}<span class="text-sm">Commander 1: ${(commander1.steam&&commander1.steam.nickname)||commander1.id}</span></div>` : '';
-        const c2 = commander2 ? `<div class="flex items-center gap-2">${(commander2.steam&&commander2.steam.avatar)?`<img src="${commander2.steam.avatar}" class="w-6 h-6 rounded-full"/>`:''}<span class="text-sm">Commander 2: ${(commander2.steam&&commander2.steam.nickname)||commander2.id}</span></div>` : '';
+        const c1 = commander1 ? `<div class="flex items-center gap-2">${(commander1.steam&&commander1.steam.avatar)?`<img src="${commander1.steam.avatar}" class="tp-avatar"/>`:''}<span class="text-sm">Commander 1: ${(commander1.steam&&commander1.steam.nickname)||commander1.id}</span></div>` : '';
+        const c2 = commander2 ? `<div class="flex items-center gap-2">${(commander2.steam&&commander2.steam.avatar)?`<img src="${commander2.steam.avatar}" class="tp-avatar"/>`:''}<span class="text-sm">Commander 2: ${(commander2.steam&&commander2.steam.nickname)||commander2.id}</span></div>` : '';
         const isMyTurn = (tp.your_role==='commander1' && tp.next_team===1) || (tp.your_role==='commander2' && tp.next_team===2);
         const waitingText = !tp.coin_winner_team ? 'Run coin toss to begin' : (isMyTurn? 'Your turn' : `Waiting for ${(tp.next_team===1?(commander1&&((commander1.steam&&commander1.steam.nickname)||commander1.id)):(commander2&&((commander2.steam&&commander2.steam.nickname)||commander2.id))) || 'commander'} to pick`);
         const coin = tp.coin_winner_team? `<span class="badge-soft">Coin: Team ${tp.coin_winner_team}</span>` : '<button id="tpCoin" class="btn btn-xs">Coin toss</button>';
         const eligible = (tp.roster||[]).filter(r=>r.steam_id && !(tp.picks||[]).some(p=>p.player&&p.player.steam_id===String(r.steam_id)));
-        const rosterHtml = eligible.map(r=>{ const nick = (r.steam&&r.steam.nickname) || r.name || r.steam_id; const av = (r.steam&&r.steam.avatar)?`<img src="${r.steam.avatar}" class="w-6 h-6 rounded-full mr-2"/>`:''; return `<button class="btn btn-xs" data-sid="${r.steam_id}" ${!tp.coin_winner_team?'disabled':''}>${av}<span class="truncate">${nick}</span></button>`; }).join(' ');
+        const rosterHtml = eligible.map(r=>{ const nick = (r.steam&&r.steam.nickname) || r.name || r.steam_id; const av = (r.steam&&r.steam.avatar)?`<img src="${r.steam.avatar}" class="tp-avatar-sm mr-2"/>`:''; return `<button class="btn btn-xs" data-sid="${r.steam_id}" ${!tp.coin_winner_team?'disabled':''}>${av}<span class="truncate">${nick}</span></button>`; }).join(' ');
         mBody.innerHTML = `
           <div class="space-y-3">
             <div class="flex items-center justify-between">${c1}${c2}</div>

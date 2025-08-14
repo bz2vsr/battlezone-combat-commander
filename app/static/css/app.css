@@ -6,4 +6,7 @@
 .players-online a { text-decoration: none; }
 .players-online a:hover { text-decoration: underline; }
 .map-thumb { width:200px; height:200px; object-fit:cover; border-radius:8px; border:1px solid #1b2535; cursor:zoom-in; display:block; margin-top:8px; }
+/* Team Picker avatar sizing to match gamecard aesthetics */
+.tp-avatar { width:24px; height:24px; border-radius:9999px; object-fit:cover; display:inline-block; }
+.tp-avatar-sm { width:16px; height:16px; border-radius:9999px; object-fit:cover; display:inline-block; }
 
