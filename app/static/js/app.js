@@ -449,6 +449,38 @@
   refreshOnline();
   setInterval(refreshOnline, 5000);
 
+  // Team Picker: poll for sessions open for me and prompt join
+  async function checkTeamPickerInvites(){
+    try {
+      const r = await fetch('/api/v1/team_picker/open_for_me');
+      const j = await r.json();
+      const items = (j && Array.isArray(j.items)) ? j.items : [];
+      if (!items.length) return;
+      // Show a minimal prompt for the first one
+      const s = items[0];
+      const title = document.getElementById('appModalTitle');
+      const body = document.getElementById('appModalBody');
+      if (title && body) {
+        title.textContent = 'Team Picker started';
+        const parts = (s.participants||[]).map(p=>{
+          const av = (p.steam && p.steam.avatar) ? `<img src="${p.steam.avatar}" class="tp-avatar-sm mr-2"/>` : '';
+          const name = (p.steam && p.steam.nickname) || p.id;
+          const dot = p.active ? '<span class="dot sm ok ml-2"></span>' : '';
+          return `<div class="flex items-center text-sm">${av}<span class="truncate flex-1">${name}</span>${dot}</div>`;
+        }).join('');
+        body.innerHTML = `<div class="space-y-3">
+          <div class="text-sm">A Team Picker was started for this session.</div>
+          <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">${parts}</div></div>
+          <div class="flex gap-2"><button id="tpOpenFromPrompt" class="btn btn-sm btn-primary">Open</button><button id="tpDismiss" class="btn btn-sm">Dismiss</button></div>
+        </div>`;
+        document.getElementById('appModal')?.showModal();
+        const openBtn = document.getElementById('tpOpenFromPrompt'); if (openBtn) openBtn.onclick = ()=>{ document.getElementById('appModal')?.close(); try { fetch(`/api/v1/team_picker/${encodeURIComponent(s.session_id)}` ).then(r=>r.json()).then(j=>{ const t=j.session; if(!t) return; const tTitle=document.getElementById('appModalTitle'); const tBody=document.getElementById('appModalBody'); if(tTitle) tTitle.textContent='Team Picker'; if(tBody){ /* reuse existing renderer */ } }); } catch {} };
+        const dismissBtn = document.getElementById('tpDismiss'); if (dismissBtn) dismissBtn.onclick = ()=>{ document.getElementById('appModal')?.close(); };
+      }
+    } catch {}
+  }
+  setInterval(checkTeamPickerInvites, 7000);
+
   if (btnCreateMock) btnCreateMock.addEventListener('click', async (e)=>{
     e.preventDefault();
     try {

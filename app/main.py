@@ -19,6 +19,7 @@ def create_app() -> Flask:
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
     # Expose realtime flag to templates/JS (set by dev.ps1 -Realtime)
     app.config['REALTIME_ENABLED'] = bool(os.getenv('REALTIME'))
+    app.config['TEAM_PICK_PRESENCE'] = {}
 
     # Ensure DB schema exists (idempotent)
     try:
@@ -446,6 +447,9 @@ def create_app() -> Flask:
                         me_role = r.role
                         break
             # Build response
+            from datetime import datetime as _dt, timedelta as _td
+            presence = app.config.get('TEAM_PICK_PRESENCE', {})
+            cutoff_ts = (_dt.utcnow() - _td(seconds=20)).timestamp()
             resp = {
                 "id": tps.id,
                 "game_session_id": tps.session_id,
@@ -466,6 +470,7 @@ def create_app() -> Flask:
                         "provider": r.provider,
                         "id": r.external_id,
                         "role": r.role,
+                        "active": presence.get(f"{session_id}:{r.provider}:{r.external_id}", 0) >= cutoff_ts,
                         "steam": (mapping.get(str(r.external_id)) if r.provider == "steam" else None),
                     } for r in parts
                 ],
@@ -780,6 +785,93 @@ def create_app() -> Flask:
         except Exception:
             pass
         return team_picker_get(session_id)
+
+    @app.post("/api/v1/team_picker/<path:session_id>/presence")
+    def team_picker_presence(session_id: str):
+        uid = session.get('uid')
+        if not uid:
+            return jsonify({"ok": False, "error": "not_authenticated"}), 401
+        provider, external = uid.split(":", 1)
+        from app.db import session_scope
+        from app.models import TeamPickSession, TeamPickParticipant
+        from sqlalchemy import select as _select
+        with session_scope() as db:
+            tps = db.execute(
+                _select(TeamPickSession).where(TeamPickSession.session_id == session_id, TeamPickSession.state == 'open')
+            ).scalars().first()
+            if not tps:
+                return jsonify({"ok": False})
+            part = db.execute(
+                _select(TeamPickParticipant).where(TeamPickParticipant.pick_session_id == tps.id, TeamPickParticipant.provider == provider, TeamPickParticipant.external_id == external)
+            ).scalars().first()
+            if not part:
+                return jsonify({"ok": False, "error": "forbidden"}), 403
+        from time import time as _time
+        presence = app.config.get('TEAM_PICK_PRESENCE', {})
+        presence[f"{session_id}:{provider}:{external}"] = _time()
+        app.config['TEAM_PICK_PRESENCE'] = presence
+        try:
+            if socketio:
+                socketio.emit("team_picker:presence", {"session_id": session_id}, room=f"team_picker:{session_id}", broadcast=True)
+        except Exception:
+            pass
+        return jsonify({"ok": True})
+
+    @app.get("/api/v1/team_picker/open_for_me")
+    def team_picker_open_for_me():
+        uid = session.get('uid')
+        if not uid:
+            return jsonify({"items": []})
+        provider, external = uid.split(":", 1)
+        from app.db import session_scope
+        from app.models import TeamPickSession, TeamPickParticipant, Identity, Player
+        from sqlalchemy import select as _select
+        from datetime import datetime as _dt, timedelta as _td
+        with session_scope() as db:
+            rows = db.execute(
+                _select(TeamPickSession, TeamPickParticipant)
+                .where(TeamPickSession.state == 'open')
+                .join(TeamPickParticipant, TeamPickParticipant.pick_session_id == TeamPickSession.id)
+            ).all()
+            sessions: dict[str, dict] = {}
+            for tps, part in rows:
+                if part.provider == provider and part.external_id == external:
+                    sessions.setdefault(tps.session_id, {"session_id": tps.session_id, "state": tps.state, "participants": []})
+            if not sessions:
+                return jsonify({"items": []})
+            ids = list(sessions.keys())
+            parts = db.execute(
+                _select(TeamPickSession, TeamPickParticipant)
+                .where(TeamPickSession.session_id.in_(ids))
+                .join(TeamPickParticipant, TeamPickParticipant.pick_session_id == TeamPickSession.id)
+            ).all()
+            steam_ids = [p.external_id for tps, p in parts if p.provider == 'steam']
+            mapping = {}
+            if steam_ids:
+                idrows = db.execute(
+                    _select(Identity, Player)
+                    .where(Identity.provider == 'steam', Identity.external_id.in_(steam_ids))
+                    .join(Player, Identity.player_id == Player.id, isouter=True)
+                ).all()
+                for ident, player in idrows:
+                    mapping[str(ident.external_id)] = {
+                        "id": str(ident.external_id),
+                        "profile": ident.profile_url,
+                        "nickname": (player.display_name if player else None),
+                        "avatar": (player.avatar_url if player else None),
+                    }
+            presence = app.config.get('TEAM_PICK_PRESENCE', {})
+            cutoff_ts = (_dt.utcnow() - _td(seconds=20)).timestamp()
+            for tps, p in parts:
+                if tps.session_id in sessions:
+                    sessions[tps.session_id]["participants"].append({
+                        "provider": p.provider,
+                        "id": p.external_id,
+                        "role": p.role,
+                        "active": presence.get(f"{tps.session_id}:{p.provider}:{p.external_id}", 0) >= cutoff_ts,
+                        "steam": mapping.get(str(p.external_id)) if p.provider == 'steam' else None,
+                    })
+            return jsonify({"items": list(sessions.values())})
 
     @app.post("/api/v1/team_picker/<path:session_id>/cancel")
     def team_picker_cancel(session_id: str):
