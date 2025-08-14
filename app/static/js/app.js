@@ -56,22 +56,32 @@
   }
 
   function sortSessions(list){
-    const mode = (document.getElementById('fSort') && document.getElementById('fSort').value) || 'players_desc';
+    const mode = (document.getElementById('fSort') && document.getElementById('fSort').value) || 'recent_desc';
     const arr = list.slice();
     const stateOrder = { 'InGame': 0, 'PreGame': 1, 'PostGame': 2 };
     if (mode === 'name_asc') {
       arr.sort((a,b)=> compareByName(a,b));
-    } else if (mode === 'state_then_players') {
+    } else if (mode === 'state_then_recent') {
       arr.sort((a,b)=>{
         const sa = stateOrder[a.state] ?? 3;
         const sb = stateOrder[b.state] ?? 3;
         if (sa !== sb) return sa - sb;
+        const ta = new Date(a.created_at || a.started_at || 0).getTime();
+        const tb = new Date(b.created_at || b.started_at || 0).getTime();
+        if (ta !== tb) return tb - ta; // recent first within same state
+        return compareByName(a,b);
+      });
+    } else if (mode === 'players_desc') {
+      arr.sort((a,b)=>{
         const ca = (a.players||[]).length; const cb = (b.players||[]).length;
         if (ca !== cb) return cb - ca;
         return compareByName(a,b);
       });
-    } else { // players_desc default
+    } else { // recent_desc default
       arr.sort((a,b)=>{
+        const ta = new Date(a.created_at || a.started_at || 0).getTime();
+        const tb = new Date(b.created_at || b.started_at || 0).getTime();
+        if (ta !== tb) return tb - ta; // recent first
         const ca = (a.players||[]).length; const cb = (b.players||[]).length;
         if (ca !== cb) return cb - ca;
         return compareByName(a,b);
@@ -183,22 +193,50 @@
       };
 
       function renderTP(tp){
-        const picks = (tp.picks||[]).map(p=>`<div class="flex items-center justify-between text-sm"><span class="opacity-70">#${p.order}</span><span>Team ${p.team_id}</span><span class="truncate">${(p.player&&p.player.steam&&p.player.steam.nickname)||p.player.steam_id}</span></div>`).join('');
         const commander1 = (tp.participants||[]).find(p=>p.role==='commander1');
         const commander2 = (tp.participants||[]).find(p=>p.role==='commander2');
-        const c1 = commander1 ? `<div class="flex items-center gap-2">${(commander1.steam&&commander1.steam.avatar)?`<img src="${commander1.steam.avatar}" class="tp-avatar"/>`:''}<span class="text-sm">Commander 1: ${(commander1.steam&&commander1.steam.nickname)||commander1.id}</span></div>` : '';
-        const c2 = commander2 ? `<div class="flex items-center gap-2">${(commander2.steam&&commander2.steam.avatar)?`<img src="${commander2.steam.avatar}" class="tp-avatar"/>`:''}<span class="text-sm">Commander 2: ${(commander2.steam&&commander2.steam.nickname)||commander2.id}</span></div>` : '';
+        const c1 = commander1 ? `<div class="flex items-center gap-2">${(commander1.steam&&commander1.steam.avatar)?`<img src="${commander1.steam.avatar}" class="tp-avatar"/>`:''}<span class="text-sm font-medium">${(commander1.steam&&commander1.steam.nickname)||commander1.id}</span></div>` : '';
+        const c2 = commander2 ? `<div class="flex items-center gap-2 justify-end">${(commander2.steam&&commander2.steam.avatar)?`<img src="${commander2.steam.avatar}" class="tp-avatar"/>`:''}<span class="text-sm font-medium">${(commander2.steam&&commander2.steam.nickname)||commander2.id}</span></div>` : '';
+
+        const team1Picks = (tp.picks||[]).filter(p=>p.team_id===1).map(p=>{
+          const nick = (p.player&&p.player.steam&&p.player.steam.nickname) || p.player?.name || p.player?.steam_id || 'Player';
+          const av = (p.player&&p.player.steam&&p.player.steam.avatar)?`<img src="${p.player.steam.avatar}" class="tp-avatar-sm mr-2"/>`:'';
+          return `<div class="flex items-center text-sm">${av}<span class="truncate">${nick}</span></div>`;
+        }).join('') || '<span class="opacity-70 text-xs">No picks yet</span>';
+        const team2Picks = (tp.picks||[]).filter(p=>p.team_id===2).map(p=>{
+          const nick = (p.player&&p.player.steam&&p.player.steam.nickname) || p.player?.name || p.player?.steam_id || 'Player';
+          const av = (p.player&&p.player.steam&&p.player.steam.avatar)?`<img src="${p.player.steam.avatar}" class="tp-avatar-sm mr-2"/>`:'';
+          return `<div class="flex items-center text-sm justify-end">${av}<span class="truncate">${nick}</span></div>`;
+        }).join('') || '<span class="opacity-70 text-xs">No picks yet</span>';
         const isMyTurn = (tp.your_role==='commander1' && tp.next_team===1) || (tp.your_role==='commander2' && tp.next_team===2);
         const waitingText = !tp.coin_winner_team ? 'Run coin toss to begin' : (isMyTurn? 'Your turn' : `Waiting for ${(tp.next_team===1?(commander1&&((commander1.steam&&commander1.steam.nickname)||commander1.id)):(commander2&&((commander2.steam&&commander2.steam.nickname)||commander2.id))) || 'commander'} to pick`);
         const coin = tp.coin_winner_team? `<span class="badge-soft">Coin: Team ${tp.coin_winner_team}</span>` : '<button id="tpCoin" class="btn btn-xs">Coin toss</button>';
-        const eligible = (tp.roster||[]).filter(r=>r.steam_id && !(tp.picks||[]).some(p=>p.player&&p.player.steam_id===String(r.steam_id)));
+        const commanderIds = new Set([
+          commander1 && commander1.id ? String(commander1.id) : '',
+          commander2 && commander2.id ? String(commander2.id) : ''
+        ]);
+        const eligible = (tp.roster||[]).filter(r=>{
+          const sid = String(r.steam_id||'');
+          if (!sid) return false;
+          if (commanderIds.has(sid)) return false; // exclude commanders from pool
+          return !(tp.picks||[]).some(p=>p.player && String(p.player.steam_id)===sid);
+        });
         const rosterHtml = eligible.map(r=>{ const nick = (r.steam&&r.steam.nickname) || r.name || r.steam_id; const av = (r.steam&&r.steam.avatar)?`<img src="${r.steam.avatar}" class="tp-avatar-sm mr-2"/>`:''; return `<button class="btn btn-xs" data-sid="${r.steam_id}" ${!tp.coin_winner_team?'disabled':''}>${av}<span class="truncate">${nick}</span></button>`; }).join(' ');
         mBody.innerHTML = `
           <div class="space-y-3">
             <div class="flex items-center justify-between">${c1}${c2}</div>
             <div class="flex gap-2 items-center text-sm"><span class="badge-soft">${tp.state}</span>${coin}<span class="text-xs opacity-70">${tp.next_team?`Team ${tp.next_team}'s turn`:(!tp.coin_winner_team?'Run coin toss to begin':'')}</span></div>
             <div class="alert bg-base-200 border border-base-300 text-xs">${waitingText}</div>
-            <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">${picks || '<span class="opacity-70 text-sm">No picks yet</span>'}</div></div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">
+                <div class="text-sm opacity-70 mb-2">Team 1</div>
+                ${team1Picks}
+              </div></div>
+              <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">
+                <div class="text-sm opacity-70 mb-2">Team 2</div>
+                ${team2Picks}
+              </div></div>
+            </div>
             <div class="flex flex-wrap gap-2" id="tpRoster">${rosterHtml || '<span class="opacity-70 text-sm">No eligible players</span>'}</div>
             <div class="flex gap-2">
               <button id="tpFinalize" class="btn btn-sm">Finalize</button>
@@ -211,6 +249,20 @@
         if (roster) roster.querySelectorAll('button[data-sid]').forEach(btn=>{ btn.addEventListener('click', async ()=>{ const sid = btn.getAttribute('data-sid'); if(!sid) return; btn.disabled = true; try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/pick`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({player_steam_id: sid})}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {} }); });
         const btnFin = document.getElementById('tpFinalize'); if (btnFin) btnFin.onclick = async ()=>{ try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/finalize`, {method:'POST'}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {} };
         const btnAuto = document.getElementById('tpAuto'); if (btnAuto) btnAuto.onclick = async ()=>{ try { await fetch(`/admin/dev/team_picker/${encodeURIComponent(s.id)}/auto_pick`, {method:'POST'}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {} };
+
+        // If single-user testing and it's the other commander's turn, auto-pick after a short delay
+        try {
+          const yourRole = tp.your_role;
+          const nextTeam = tp.next_team;
+          if (tp.coin_winner_team && eligible.length > 0) {
+            if ((yourRole==='commander1' && nextTeam===2) || (yourRole==='commander2' && nextTeam===1) || (!yourRole && nextTeam===2)) {
+              setTimeout(async ()=>{
+                try { await fetch(`/admin/dev/team_picker/${encodeURIComponent(s.id)}/auto_pick`, {method:'POST'}); } catch {}
+                try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); renderTP(j.session);} catch {}
+              }, 800);
+            }
+          }
+        } catch {}
       }
       grid.appendChild(card);
     });
