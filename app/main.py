@@ -854,6 +854,9 @@ def create_app() -> Flask:
             sessions: dict[str, dict] = {}
             for tps, part in rows:
                 if part.provider == provider and part.external_id == external and part.role in ("commander1", "commander2"):
+                    # Do not prompt the creator of the Team Picker session about their own start
+                    if tps.created_by_provider == provider and tps.created_by_external_id == external:
+                        continue
                     sessions.setdefault(tps.session_id, {
                         "session_id": tps.session_id,
                         "state": tps.state,

@@ -163,7 +163,18 @@
                   return;
                 }
               } catch {}
-              try { const r = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j = await r.json(); renderTP(j.session); } catch {}
+              try {
+                const r = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`);
+                const j = await r.json();
+                renderTP(j.session);
+                try { window.__TP_OPEN__ = s.id; } catch {}
+                try { if (socket && window.__REALTIME__) { socket.emit('join', { room: `team_picker:${s.id}` }); } } catch {}
+                try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/presence`, {method:'POST', credentials:'same-origin'}); } catch {}
+                let tpPresenceTimer = setInterval(async ()=>{ try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/presence`, {method:'POST', credentials:'same-origin'}); } catch {} }, 10000);
+                const modalEl = document.getElementById('appModal');
+                const onClose = ()=>{ window.__TP_OPEN__ = null; try { if (socket && window.__REALTIME__) { socket.emit('leave', { room: `team_picker:${s.id}` }); } } catch {}; if (tpPresenceTimer) { clearInterval(tpPresenceTimer); tpPresenceTimer=null; } modalEl?.removeEventListener('close', onClose); };
+                modalEl?.addEventListener('close', onClose);
+              } catch {}
             };
             return;
           }
