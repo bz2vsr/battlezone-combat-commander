@@ -15,39 +15,7 @@
   let isWarmup = true;
   setTimeout(()=>{ isWarmup = false; }, 8000);
 
-  // Pending mock session handling
-  let pendingMockSessionId = null;
-
-  function makeSkeletonCard(){
-    const sk = document.createElement('div');
-    sk.id = 'mockLoadingCard';
-    sk.className = 'card bg-base-200 border border-base-300 p-3 animate-pulse';
-    sk.innerHTML = `
-      <div class="h-4 bg-base-300 rounded w-24 mb-3"></div>
-      <div class="card bg-base-100 border border-base-300 mb-2"><div class="card-body p-3">
-        <div class="h-5 bg-base-300 rounded w-2/3 mb-2"></div>
-        <div class="h-3 bg-base-300 rounded w-1/3"></div>
-      </div></div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">
-          <div class="h-4 bg-base-300 rounded w-20 mb-2"></div>
-          <div class="space-y-2">
-            <div class="h-3 bg-base-300 rounded"></div>
-            <div class="h-3 bg-base-300 rounded w-4/5"></div>
-            <div class="h-3 bg-base-300 rounded w-3/5"></div>
-          </div>
-        </div></div>
-        <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">
-          <div class="h-4 bg-base-300 rounded w-20 mb-2"></div>
-          <div class="space-y-2">
-            <div class="h-3 bg-base-300 rounded"></div>
-            <div class="h-3 bg-base-300 rounded w-4/5"></div>
-            <div class="h-3 bg-base-300 rounded w-3/5"></div>
-          </div>
-        </div></div>
-      </div>`;
-    return sk;
-  }
+  // no skeleton card; we will show loading state on button instead
 
   function compareByName(a, b){
     const an = ((a.name || a.id || '').toString()).toLowerCase();
@@ -103,10 +71,6 @@
       empty.innerHTML = `<div class="alert alert-info bg-base-200 border border-base-300"><span>${msg}</span></div>`;
       grid.appendChild(empty);
       return;
-    }
-    // If a mock is pending and not yet present, show a skeleton card at the top
-    if (pendingMockSessionId && !sessions.some(s => s.id === pendingMockSessionId)) {
-      grid.appendChild(makeSkeletonCard());
     }
     sessions.forEach(s => {
       const card = document.createElement('div');
@@ -266,11 +230,7 @@
       }
       grid.appendChild(card);
     });
-    // If the pending mock is now present, clear the placeholder
-    if (pendingMockSessionId && sessions.some(s => s.id === pendingMockSessionId)) {
-      pendingMockSessionId = null;
-      const sk = document.getElementById('mockLoadingCard'); if (sk && sk.parentNode) sk.parentNode.removeChild(sk);
-    }
+    // no-op: no skeleton placeholder behavior
   }
 
   function url() {
@@ -401,16 +361,20 @@
   if (btnCreateMock) btnCreateMock.addEventListener('click', async (e)=>{
     e.preventDefault();
     try {
+      const original = btnCreateMock.textContent;
+      btnCreateMock.textContent = 'Loading…';
+      btnCreateMock.disabled = true;
       const r = await fetch('/admin/dev/mock/session', {method:'POST'});
       const j = await r.json();
       if (j && j.ok && j.session_id) {
-        // mark pending and refresh grid to include mock session
-        pendingMockSessionId = j.session_id;
-        const gridEl = document.getElementById('grid');
-        if (gridEl) { gridEl.prepend(makeSkeletonCard()); }
+        // refresh grid to include mock session
         try { await fetch('/api/v1/sessions/current'); } catch {}
       }
     } catch {}
+    finally {
+      btnCreateMock.textContent = 'Create mock session';
+      btnCreateMock.disabled = false;
+    }
   });
 })();
 
