@@ -910,7 +910,7 @@ def create_app() -> Flask:
             # Only notify when the other commander (creator) is present and the game is in PreGame
             filtered = []
             # Only show prompts for recently created Team Picker sessions to reflect a fresh "start" event
-            PROMPT_WINDOW_SECONDS = 90
+            PROMPT_WINDOW_SECONDS = 300
             now_ts = _dt.utcnow().timestamp()
             for item in sessions.values():
                 my = next((pp for pp in item.get("participants", []) if pp.get("provider") == provider and str(pp.get("id")) == str(external) and pp.get("role") in ("commander1", "commander2")), None)
