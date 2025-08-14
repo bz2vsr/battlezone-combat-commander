@@ -9,7 +9,8 @@ from app.db import session_scope
 from app.models import Session, SessionPlayer, Mod, Level, SessionSnapshot, Identity, Player
 
 
-GRACE_SECONDS = 120  # consider sessions stale if not seen for this long
+# Reduce grace so killed sessions fall off quickly in UI
+GRACE_SECONDS = 12  # consider sessions stale if not seen for this long
 
 
 def utcnow() -> datetime:
@@ -130,7 +131,7 @@ def save_sessions(normalized: List[Dict[str, Any]]) -> Dict[str, int]:
     return {"created": created, "updated": updated, "players": players_upserted, "levels": levels_upserted}
 
 
-def get_current_sessions(max_age_seconds: int = 120) -> List[Dict[str, Any]]:
+def get_current_sessions(max_age_seconds: int = 10) -> List[Dict[str, Any]]:
     now = utcnow()
     cutoff = now - timedelta(seconds=max_age_seconds)
     out: List[Dict[str, Any]] = []
