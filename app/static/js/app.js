@@ -142,11 +142,13 @@
             // Gate: require PreGame and both commanders signed in
             const isPre = (s.state === 'PreGame');
             const needTwo = '<div class="text-xs opacity-70">Team Picker requires both commanders to be signed in.</div>';
+            let isAuthed = false;
+            try { const me = await fetch('/api/v1/me', {credentials:'same-origin'}); const mj = await me.json(); isAuthed = !!(mj && mj.user); } catch {}
             mBody.innerHTML = `<div class="space-y-4">
               <div class="text-sm opacity-80">No Team Picker has been started for this session yet.</div>
               ${!isPre?'<div class="alert bg-base-200 border border-base-300 text-xs">Team Picker is only available in PreGame.</div>':''}
               ${needTwo}
-              <div><button id="tpStart" class="btn btn-sm btn-primary mt-2" ${!isPre?'disabled':''}>Start Team Picker</button></div>
+              ${isAuthed ? `<div><button id="tpStart" class="btn btn-sm btn-primary mt-2" ${!isPre?'disabled':''}>Start Team Picker</button></div>` : '<div class="text-xs opacity-70">Sign in as a commander to start the Team Picker.</div>'}
               <div id="tpStartErr" class="text-xs text-error"></div>
             </div>`;
             daisyModal.showModal();
@@ -156,7 +158,7 @@
                 const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/start`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin'});
                 if (!resp.ok) {
                   let msg = 'Unable to start Team Picker.';
-                  try { const j = await resp.json(); if (j && j.error === 'missing_commanders') msg = 'Could not detect two commanders. Team Picker requires two commanders with Steam IDs.'; if (j && j.error === 'not_pregame') msg = 'Team Picker is only available while the game is in PreGame.'; } catch {}
+                  try { const j = await resp.json(); if (j && j.error === 'missing_commanders') msg = 'Could not detect two commanders. Team Picker requires two commanders with Steam IDs.'; if (j && j.error === 'not_pregame') msg = 'Team Picker is only available while the game is in PreGame.'; if (j && j.error==='both_commanders_required') msg='Both commanders must be signed in to start Team Picker.'; } catch {}
                   const err = document.getElementById('tpStartErr'); if (err) { err.textContent = msg; }
                   return;
                 }
