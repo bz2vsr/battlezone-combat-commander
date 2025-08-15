@@ -63,6 +63,8 @@
     grid.innerHTML = '';
     const sessionsRaw = data.sessions || [];
     const sessions = sortSessions(sessionsRaw);
+    // Simple per-session TP status cache { active:boolean, ts:number }
+    const cache = (window.__TP_STATUS_CACHE__ ||= new Map());
     if (sessions.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'col-span-full';
@@ -144,27 +146,36 @@
       const isCommander = !!(me && me.provider==='steam' && me.id && commanderIds.has(String(me.id)));
       const btn = card.querySelector(`#tpBtn-${sidKey}`);
       const ind = card.querySelector(`#tpInd-${sidKey}`);
-      (async ()=>{
-        try {
-          const r = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`);
-          const j = await r.json();
-          const active = !!(j && j.session);
-          if (ind) ind.textContent = active ? 'Team Picker active' : 'No Team Picker';
-          if (btn) {
-            if (active) {
-              btn.textContent = isCommander ? 'Open Team Picker' : 'View Team Picker';
-              btn.disabled = false;
-            } else {
-              btn.textContent = isCommander ? 'Start Team Picker' : 'View Team Picker';
-              btn.disabled = !isCommander; // only commanders can start
-            }
-            btn.onclick = ()=> openTeamPickerModal(s);
+      // Use cached status immediately if fresh (<10s)
+      const now = Date.now();
+      const cached = cache.get(s.id);
+      const fresh = cached && (now - cached.ts < 10000);
+      const applyUI = (active)=>{
+        if (ind) ind.textContent = active ? 'Team Picker active' : 'No Team Picker';
+        if (btn) {
+          if (active) {
+            btn.textContent = isCommander ? 'Open Team Picker' : 'View Team Picker';
+            btn.disabled = false;
+          } else {
+            btn.textContent = isCommander ? 'Start Team Picker' : 'View Team Picker';
+            btn.disabled = !isCommander;
           }
-        } catch {
-          if (ind) ind.textContent = 'Team Picker status unknown';
-          if (btn) { btn.textContent = 'Open'; btn.onclick = ()=> openTeamPickerModal(s); }
+          btn.onclick = ()=> openTeamPickerModal(s);
         }
-      })();
+      };
+      if (fresh) applyUI(!!cached.active);
+      // Refresh in background if stale
+      if (!fresh) {
+        (async ()=>{
+          try {
+            const r = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`);
+            const j = await r.json();
+            const active = !!(j && j.session);
+            cache.set(s.id, { active, ts: Date.now() });
+            applyUI(active);
+          } catch { /* ignore */ }
+        })();
+      }
 
       grid.appendChild(card);
     });
@@ -190,8 +201,8 @@
           <div id="tpStartErr" class="text-xs text-error"></div>
         </div>`;
         daisyModal.showModal();
-        const btn = document.getElementById('tpStart');
-        if (btn) btn.onclick = async ()=>{
+        const startBtn = document.getElementById('tpStart');
+        if (startBtn) startBtn.onclick = async ()=>{
           try {
             const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/start`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin'});
             if (!resp.ok) {
@@ -205,7 +216,8 @@
             const r = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`);
             const j = await r.json();
             renderTP(j.session);
-            try { window.__TP_OPEN__ = s.id; } catch {}
+            daisyModal.showModal();
+            window.__TP_OPEN__ = s.id;
             try { if (socket && window.__REALTIME__) { socket.emit('join', { room: `team_picker:${s.id}` }); } } catch {}
             try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/presence`, {method:'POST', credentials:'same-origin'}); } catch {}
           } catch {}
@@ -225,7 +237,7 @@
     if (fState && fState.value) p.set('state', fState.value);
     if (fMin && fMin.value && +fMin.value>0) p.set('min_players', fMin.value);
     if (fQ && fQ.value) p.set('q', fQ.value);
-    if (fMod && fMod.value) p.set('mod', fMod.value);
+    if (fMod) fMod.addEventListener('change', fetchOnce);
     return `/api/v1/sessions/current?${p.toString()}`;
   }
 
