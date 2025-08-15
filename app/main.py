@@ -521,7 +521,7 @@ def create_app() -> Flask:
     @app.get("/api/v1/team_picker/<path:session_id>")
     def team_picker_get(session_id: str):
         resp = _build_team_picker_state(session_id)
-        return jsonify({"session": resp})
+            return jsonify({"session": resp})
 
     @app.post("/api/v1/team_picker/<path:session_id>/start")
     def team_picker_start(session_id: str):
@@ -959,6 +959,8 @@ def create_app() -> Flask:
                     continue
                 # Do not require explicit Team Picker presence for the other commander; "start" recency is enough.
                 filtered.append(item)
+            # Sort newest first
+            filtered.sort(key=lambda x: x.get("created_at_ts") or 0, reverse=True)
             return jsonify({"items": filtered})
 
     @app.post("/api/v1/team_picker/<path:session_id>/cancel")
