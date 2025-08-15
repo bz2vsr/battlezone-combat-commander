@@ -110,7 +110,7 @@
           </div></div>
         </div>`;
       const a = s.attributes || {};
-      const sidEnc = encodeURIComponent(s.id);
+      const sidKey = String(s.id||'').replace(/[^a-zA-Z0-9_-]/g, '_');
       card.innerHTML = `
         <div class="flex flex-wrap gap-2 items-center">
           <span class="${((s.state||'')==='InGame') ? 'badge-accent-soft' : 'badge-soft'}">${s.state || 'Unknown'}</span>
@@ -133,8 +133,8 @@
         ${s.level && s.level.image ? `<div class="mt-2 card bg-base-100 border border-base-300"><div class="card-body p-3"><img alt="map" class="map-thumb" src="${s.level.image}"/></div></div>` : ''}
         ${isFFA ? playersHtml : teamsHtml}
         <div class="mt-2 flex items-center justify-between">
-          <div id="tpInd-${sidEnc}" class="text-xs opacity-70">Checking Team Picker…</div>
-          <button id="tpBtn-${sidEnc}" class="btn btn-sm">Open</button>
+          <div id="tpInd-${sidKey}" class="text-xs opacity-70">Checking Team Picker…</div>
+          <button id="tpBtn-${sidKey}" class="btn btn-sm">Open</button>
         </div>
       `;
 
@@ -142,11 +142,11 @@
       const me = (window.__ME__||null);
       const commanderIds = new Set((s.players||[]).filter(p=>p.is_host && p.steam && p.steam.id).map(p=>String(p.steam.id)));
       const isCommander = !!(me && me.provider==='steam' && me.id && commanderIds.has(String(me.id)));
-      const btn = card.querySelector(`#tpBtn-${sidEnc}`);
-      const ind = card.querySelector(`#tpInd-${sidEnc}`);
+      const btn = card.querySelector(`#tpBtn-${sidKey}`);
+      const ind = card.querySelector(`#tpInd-${sidKey}`);
       (async ()=>{
         try {
-          const r = await fetch(`/api/v1/team_picker/${sidEnc}`);
+          const r = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`);
           const j = await r.json();
           const active = !!(j && j.session);
           if (ind) ind.textContent = active ? 'Team Picker active' : 'No Team Picker';
