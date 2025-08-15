@@ -236,7 +236,8 @@
             const r = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`);
             const j = await r.json();
             console.log('[TP][modal] post-start get resp', { sid: s.id, json: j });
-            renderTP(j.session);
+            if (typeof window.__RENDER_TP === 'function') { window.__RENDER_TP(j.session); }
+            else { try { mBody.innerHTML = '<div class="text-xs opacity-70">Loading Team Picker…</div>'; setTimeout(async ()=>{ try { const r2=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j2=await r2.json(); if (typeof window.__RENDER_TP==='function') window.__RENDER_TP(j2.session); } catch {} }, 200); } catch {} }
             daisyModal.showModal();
             window.__TP_OPEN__ = s.id;
             try { if (socket && window.__REALTIME__) { console.log('[TP][modal] join room', { room: `team_picker:${s.id}` }); socket.emit('join', { room: `team_picker:${s.id}` }); } } catch {}
@@ -245,7 +246,8 @@
         };
         return;
       }
-      renderTP(sess);
+      if (typeof window.__RENDER_TP === 'function') { window.__RENDER_TP(sess); }
+      else { try { mBody.innerHTML = '<div class="text-xs opacity-70">Loading Team Picker…</div>'; setTimeout(async ()=>{ try { const r2=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j2=await r2.json(); if (typeof window.__RENDER_TP==='function') window.__RENDER_TP(j2.session); } catch {} }, 200); } catch {} }
       daisyModal.showModal();
       window.__TP_OPEN__ = s.id;
       try { console.log('[TP][modal] join room', { room: `team_picker:${s.id}` }); } catch {}
