@@ -396,8 +396,7 @@ def create_app() -> Flask:
             return jsonify({"players": out})
 
     # --- Team Picker (per TECHNICAL_SPEC.md Sections 4 & 5) ---
-    @app.get("/api/v1/team_picker/<path:session_id>")
-    def team_picker_get(session_id: str):
+    def _build_team_picker_state(session_id: str):
         from app.db import session_scope
         from app.models import TeamPickSession, TeamPickPick, TeamPickParticipant, Identity, Player, SessionPlayer
         from sqlalchemy import select as _select
@@ -408,7 +407,7 @@ def create_app() -> Flask:
                 .order_by(TeamPickSession.id.desc())
             ).scalars().first()
             if not tps:
-                return jsonify({"session": None})
+                return None
             picks = db.execute(
                 _select(TeamPickPick).where(TeamPickPick.pick_session_id == tps.id).order_by(TeamPickPick.order_index.asc())
             ).scalars().all()
@@ -517,7 +516,12 @@ def create_app() -> Flask:
                     } for rr in roster_rows
                 ],
             }
-            return jsonify({"session": resp})
+            return resp
+
+    @app.get("/api/v1/team_picker/<path:session_id>")
+    def team_picker_get(session_id: str):
+        resp = _build_team_picker_state(session_id)
+        return jsonify({"session": resp})
 
     @app.post("/api/v1/team_picker/<path:session_id>/start")
     def team_picker_start(session_id: str):
@@ -600,7 +604,8 @@ def create_app() -> Flask:
                 db.add(TeamPickParticipant(pick_session_id=tps.id, provider=creator_provider, external_id=creator_external, role="viewer"))
         try:
             if socketio:
-                socketio.emit("team_picker:update", {"session_id": session_id, "action": "start"}, room=f"team_picker:{session_id}", broadcast=True)
+                state = _build_team_picker_state(session_id)
+                socketio.emit("team_picker:update", {"session_id": session_id, "action": "start", "session": state}, room=f"team_picker:{session_id}", broadcast=True)
         except Exception:
             pass
         return team_picker_get(session_id)
@@ -670,7 +675,8 @@ def create_app() -> Flask:
             db.add(TeamPickParticipant(pick_session_id=tps.id, provider='steam', external_id=str(cmd2), role='commander2'))
         try:
             if socketio:
-                socketio.emit("team_picker:update", {"session_id": session_id, "action": "restart"}, room=f"team_picker:{session_id}", broadcast=True)
+                state = _build_team_picker_state(session_id)
+                socketio.emit("team_picker:update", {"session_id": session_id, "action": "restart", "session": state}, room=f"team_picker:{session_id}", broadcast=True)
         except Exception:
             pass
         return team_picker_get(session_id)
@@ -710,7 +716,8 @@ def create_app() -> Flask:
             tps.coin_winner_team = winner
         try:
             if socketio:
-                socketio.emit("team_picker:update", {"session_id": session_id, "action": "coin_toss", "team": tps.coin_winner_team}, room=f"team_picker:{session_id}", broadcast=True)
+                state = _build_team_picker_state(session_id)
+                socketio.emit("team_picker:update", {"session_id": session_id, "action": "coin_toss", "team": tps.coin_winner_team, "session": state}, room=f"team_picker:{session_id}", broadcast=True)
         except Exception:
             pass
         return team_picker_get(session_id)
@@ -779,7 +786,8 @@ def create_app() -> Flask:
             db.add(p)
         try:
             if socketio:
-                socketio.emit("team_picker:update", {"session_id": session_id, "action": "pick"}, room=f"team_picker:{session_id}", broadcast=True)
+                state = _build_team_picker_state(session_id)
+                socketio.emit("team_picker:update", {"session_id": session_id, "action": "pick", "session": state}, room=f"team_picker:{session_id}", broadcast=True)
         except Exception:
             pass
         return team_picker_get(session_id)
@@ -826,7 +834,8 @@ def create_app() -> Flask:
                         tps.closed_at = _dt.utcnow()
         try:
             if socketio:
-                socketio.emit("team_picker:update", {"session_id": session_id, "action": "finalize"}, room=f"team_picker:{session_id}", broadcast=True)
+                state = _build_team_picker_state(session_id)
+                socketio.emit("team_picker:update", {"session_id": session_id, "action": "finalize", "session": state}, room=f"team_picker:{session_id}", broadcast=True)
         except Exception:
             pass
         return team_picker_get(session_id)
@@ -984,7 +993,8 @@ def create_app() -> Flask:
             tps.closed_at = _dt.utcnow()
         try:
             if socketio:
-                socketio.emit("team_picker:update", {"session_id": session_id, "action": "cancel"}, room=f"team_picker:{session_id}", broadcast=True)
+                state = _build_team_picker_state(session_id)
+                socketio.emit("team_picker:update", {"session_id": session_id, "action": "cancel", "session": state}, room=f"team_picker:{session_id}", broadcast=True)
         except Exception:
             pass
         return team_picker_get(session_id)

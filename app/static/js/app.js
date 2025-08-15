@@ -232,7 +232,12 @@
         mBody.innerHTML = `
           <div>
             ${commandersTop}
-            <div class="flex gap-2 items-center text-sm mt-2 md:mt-3"><span class="badge-soft">${tp.state}</span>${coin}<span class="text-xs opacity-70">${tp.next_team?`Team ${tp.next_team}'s turn`:(!tp.coin_winner_team?'Run coin toss to begin':'')}</span></div>
+            <div class="flex gap-2 items-center text-sm mt-2 md:mt-3">
+              <span class="badge-soft">${tp.state}</span>${coin}
+              <span class="text-xs opacity-70">${tp.next_team?`Team ${tp.next_team}'s turn`:(!tp.coin_winner_team?'Run coin toss to begin':'')}</span>
+              <span class="ml-auto text-xs">${(commander1&&commander1.active)?'<span class="dot sm ok"></span>':''} ${(commander1&&((commander1.steam&&commander1.steam.nickname)||commander1.id))||''}</span>
+              <span class="text-xs">${(commander2&&commander2.active)?'<span class="dot sm ok"></span>':''} ${(commander2&&((commander2.steam&&commander2.steam.nickname)||commander2.id))||''}</span>
+            </div>
             ${ (tp.accepted && (tp.accepted.commander1 || tp.accepted.commander2) && !(tp.accepted.commander1 && tp.accepted.commander2)) ? `<div class=\"alert bg-base-200 border border-base-300 text-xs mt-2\">Waiting for the other commander to finalize…</div>` : ''}
             <div class="alert bg-base-200 border border-base-300 text-xs mt-2 md:mt-3">${waitingText}</div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-3 md:mt-4">
@@ -263,7 +268,7 @@
         if (roster) roster.querySelectorAll('button[data-sid]').forEach(btn=>{ btn.addEventListener('click', async ()=>{ const sid = btn.getAttribute('data-sid'); if(!sid) return; btn.disabled = true; try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/pick`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body: JSON.stringify({player_steam_id: sid})}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); window.__RENDER_TP && window.__RENDER_TP(j.session);} catch {} }); });
         const canAct = tp.your_role==='commander1' || tp.your_role==='commander2';
         const btnFin = document.getElementById('tpFinalize'); if (btnFin) { if (!canAct) btnFin.disabled = true; btnFin.onclick = async ()=>{ try { const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/finalize`, {method:'POST', credentials:'same-origin'}); if(!resp.ok){ const err=document.getElementById('tpErr'); if(err){ err.textContent = resp.status===401?'Please sign in to finalize.': (resp.status===403?'Only commanders can finalize.':'Unable to finalize.'); } return;} } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); window.__RENDER_TP && window.__RENDER_TP(j.session);} catch {} }; }
-        const btnRestart = document.getElementById('tpRestart'); if (btnRestart) { if (!canAct) btnRestart.disabled = true; btnRestart.onclick = async ()=>{ btnRestart.disabled=true; try { const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/restart`, {method:'POST', credentials:'same-origin'}); if(!resp.ok){ const err=document.getElementById('tpErr'); if(err){ err.textContent = resp.status===401?'Please sign in to restart Team Picker.': (resp.status===403?'Only commanders can restart Team Picker.':'Unable to restart.'); } btnRestart.disabled=false; return;} } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); window.__RENDER_TP && window.__RENDER_TP(j.session);} catch {} }; }
+        const btnRestart = document.getElementById('tpRestart'); if (btnRestart) { if (!canAct) btnRestart.disabled = true; btnRestart.onclick = async ()=>{ if(!confirm('Cancel current Team Picker and start over?')) return; btnRestart.disabled=true; try { const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/restart`, {method:'POST', credentials:'same-origin'}); if(!resp.ok){ const err=document.getElementById('tpErr'); if(err){ err.textContent = resp.status===401?'Please sign in to restart Team Picker.': (resp.status===403?'Only commanders can restart Team Picker.':'Unable to restart.'); } btnRestart.disabled=false; return;} } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); window.__RENDER_TP && window.__RENDER_TP(j.session);} catch {} }; }
         const btnRand = document.getElementById('tpPickRandom'); if (btnRand) { if (!canAct) btnRand.disabled = true; btnRand.onclick = async ()=>{ if (!eligible || eligible.length===0) return; btnRand.disabled = true; const pick = eligible[Math.floor(Math.random()*eligible.length)]; try { const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/pick`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body: JSON.stringify({player_steam_id: pick.steam_id})}); if(!resp.ok){ const err=document.getElementById('tpErr'); if(err){ err.textContent = resp.status===401?'Please sign in to pick.': (resp.status===403?'It is not your turn to pick.':'Unable to pick.'); } btnRand.disabled=false; return;} } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); window.__RENDER_TP && window.__RENDER_TP(j.session);} catch {} }; }
 
         // Auto-pick removed
@@ -333,6 +338,8 @@
         try {
           if (!window.__TP_OPEN__ || !payload || !payload.session_id) return;
           if (window.__TP_OPEN__ !== payload.session_id) return;
+          const sess = payload.session;
+          if (sess && typeof window.__RENDER_TP === 'function') { window.__RENDER_TP(sess); return; }
           fetch(`/api/v1/team_picker/${encodeURIComponent(window.__TP_OPEN__)}`, {cache:'no-store'}).then(r=>r.json()).then(j=>{ if (j && j.session) { if (typeof window.__RENDER_TP === 'function') { window.__RENDER_TP(j.session); } } });
         } catch {}
       });
