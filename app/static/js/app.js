@@ -74,7 +74,7 @@
     }
     sessions.forEach(s => {
       const card = document.createElement('div');
-      card.className = 'card bg-base-200 border border-base-300 cursor-pointer p-3';
+      card.className = 'card bg-base-200 border border-base-300 p-3';
       const title = (((s.level && s.level.name) || '') + ' ' + ((s.name || ''))).toLowerCase();
       const isFFA = /(ffa|deathmatch|\bdm\b)/.test(title);
       const playersHtml = `
@@ -110,6 +110,7 @@
           </div></div>
         </div>`;
       const a = s.attributes || {};
+      const sidEnc = encodeURIComponent(s.id);
       card.innerHTML = `
         <div class="flex flex-wrap gap-2 items-center">
           <span class="${((s.state||'')==='InGame') ? 'badge-accent-soft' : 'badge-soft'}">${s.state || 'Unknown'}</span>
@@ -131,142 +132,92 @@
         </div>
         ${s.level && s.level.image ? `<div class="mt-2 card bg-base-100 border border-base-300"><div class="card-body p-3"><img alt="map" class="map-thumb" src="${s.level.image}"/></div></div>` : ''}
         ${isFFA ? playersHtml : teamsHtml}
+        <div class="mt-2 flex items-center justify-between">
+          <div id="tpInd-${sidEnc}" class="text-xs opacity-70">Checking Team Picker…</div>
+          <button id="tpBtn-${sidEnc}" class="btn btn-sm">Open</button>
+        </div>
       `;
-      card.onclick = async () => {
+
+      // Decide label/visibility asynchronously with minimal caching
+      const me = (window.__ME__||null);
+      const commanderIds = new Set((s.players||[]).filter(p=>p.is_host && p.steam && p.steam.id).map(p=>String(p.steam.id)));
+      const isCommander = !!(me && me.provider==='steam' && me.id && commanderIds.has(String(me.id)));
+      const btn = card.querySelector(`#tpBtn-${sidEnc}`);
+      const ind = card.querySelector(`#tpInd-${sidEnc}`);
+      (async ()=>{
         try {
-          const res = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`);
-          const data = await res.json();
-          mTitle.textContent = 'Team Picker';
-          const sess = data && data.session;
-          if (!sess) {
-            // Gate: require PreGame and both commanders signed in
-            const isPre = (s.state === 'PreGame');
-            const needTwo = '<div class="text-xs opacity-70">Team Picker requires both commanders to be signed in.</div>';
-            let isAuthed = false;
-            try { const me = await fetch('/api/v1/me', {credentials:'same-origin'}); const mj = await me.json(); isAuthed = !!(mj && mj.user); } catch {}
-            mBody.innerHTML = `<div class="space-y-4">
-              <div class="text-sm opacity-80">No Team Picker has been started for this session yet.</div>
-              ${!isPre?'<div class="alert bg-base-200 border border-base-300 text-xs">Team Picker is only available in PreGame.</div>':''}
-              ${needTwo}
-              ${isAuthed ? `<div><button id="tpStart" class="btn btn-sm btn-primary mt-2" ${!isPre?'disabled':''}>Start Team Picker</button></div>` : '<div class="text-xs opacity-70">Sign in as a commander to start the Team Picker.</div>'}
-              <div id="tpStartErr" class="text-xs text-error"></div>
-            </div>`;
-            daisyModal.showModal();
-            const btn = document.getElementById('tpStart');
-            if (btn) btn.onclick = async ()=>{
-              try {
-                const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/start`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin'});
-                if (!resp.ok) {
-                  let msg = 'Unable to start Team Picker.';
-                  try { const j = await resp.json(); if (j && j.error === 'missing_commanders') msg = 'Could not detect two commanders. Team Picker requires two commanders with Steam IDs.'; if (j && j.error === 'not_pregame') msg = 'Team Picker is only available while the game is in PreGame.'; if (j && j.error==='both_commanders_required') msg='Both commanders must be signed in to start Team Picker.'; } catch {}
-                  const err = document.getElementById('tpStartErr'); if (err) { err.textContent = msg; }
-                  return;
-                }
-              } catch {}
-              try {
-                const r = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`);
-                const j = await r.json();
-                renderTP(j.session);
-                try { window.__TP_OPEN__ = s.id; } catch {}
-                try { if (socket && window.__REALTIME__) { socket.emit('join', { room: `team_picker:${s.id}` }); } } catch {}
-                try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/presence`, {method:'POST', credentials:'same-origin'}); } catch {}
-                let tpPresenceTimer = setInterval(async ()=>{ try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/presence`, {method:'POST', credentials:'same-origin'}); } catch {} }, 10000);
-                const modalEl = document.getElementById('appModal');
-                const onClose = ()=>{ window.__TP_OPEN__ = null; try { if (socket && window.__REALTIME__) { socket.emit('leave', { room: `team_picker:${s.id}` }); } } catch {}; if (tpPresenceTimer) { clearInterval(tpPresenceTimer); tpPresenceTimer=null; } modalEl?.removeEventListener('close', onClose); };
-                modalEl?.addEventListener('close', onClose);
-              } catch {}
-            };
-            return;
+          const r = await fetch(`/api/v1/team_picker/${sidEnc}`);
+          const j = await r.json();
+          const active = !!(j && j.session);
+          if (ind) ind.textContent = active ? 'Team Picker active' : 'No Team Picker';
+          if (btn) {
+            if (active) {
+              btn.textContent = isCommander ? 'Open Team Picker' : 'View Team Picker';
+              btn.disabled = false;
+            } else {
+              btn.textContent = isCommander ? 'Start Team Picker' : 'View Team Picker';
+              btn.disabled = !isCommander; // only commanders can start
+            }
+            btn.onclick = ()=> openTeamPickerModal(s);
           }
-          renderTP(sess);
-          daisyModal.showModal();
-          window.__TP_OPEN__ = s.id;
-          try { if (socket && window.__REALTIME__) { socket.emit('join', { room: `team_picker:${s.id}` }); } } catch {}
-          try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/presence`, {method:'POST', credentials:'same-origin'}); } catch {}
-          let tpPresenceTimer = setInterval(async ()=>{ try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/presence`, {method:'POST', credentials:'same-origin'}); } catch {} }, 10000);
-          // Fallback realtime: periodic refresh while modal open, but pause soon after a socket update
-          let tpRefreshTimer = setInterval(async ()=>{
-            try {
-              const now = Date.now();
-              if (now - __TP_LAST_SOCKET_TS < 3500) return;
-              const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`, {cache:'no-store'});
-              const j=await r.json();
-              if (j && j.session && typeof window.__RENDER_TP==='function') { window.__RENDER_TP(j.session); }
-            } catch {}
-          }, 2000);
-          const modalEl = document.getElementById('appModal');
-          const onClose = ()=>{ window.__TP_OPEN__ = null; try { if (socket && window.__REALTIME__) { socket.emit('leave', { room: `team_picker:${s.id}` }); } } catch {}; if (tpPresenceTimer) { clearInterval(tpPresenceTimer); tpPresenceTimer=null; } if (tpRefreshTimer) { clearInterval(tpRefreshTimer); tpRefreshTimer=null; } modalEl?.removeEventListener('close', onClose); };
-          modalEl?.addEventListener('close', onClose);
-        } catch {}
-      };
+        } catch {
+          if (ind) ind.textContent = 'Team Picker status unknown';
+          if (btn) { btn.textContent = 'Open'; btn.onclick = ()=> openTeamPickerModal(s); }
+        }
+      })();
 
-      function renderTP(tp){
-        // Also expose to realtime handler
-        window.__RENDER_TP = (next)=>{ try { renderTP(next); } catch {} };
-        const commander1 = (tp.participants||[]).find(p=>p.role==='commander1');
-        const commander2 = (tp.participants||[]).find(p=>p.role==='commander2');
-        const c1 = commander1 ? `<div class="tp-commander">${(commander1.steam&&commander1.steam.avatar)?`<img src="${commander1.steam.avatar}" class="tp-avatar-lg"/>`:''}<span class="name">${(commander1.steam&&commander1.steam.nickname)||commander1.id}</span></div>` : '';
-        const c2 = commander2 ? `<div class="tp-commander">${(commander2.steam&&commander2.steam.avatar)?`<img src="${commander2.steam.avatar}" class="tp-avatar-lg"/>`:''}<span class="name">${(commander2.steam&&commander2.steam.nickname)||commander2.id}</span></div>` : '';
-        const isFinal = (tp.state||'').toLowerCase() === 'final';
-        const isMyTurn = (tp.your_role==='commander1' && tp.next_team===1) || (tp.your_role==='commander2' && tp.next_team===2);
-        const waitingText = isFinal ? 'Roster finalized. Use Restart to begin again.' : (!tp.coin_winner_team ? 'Run coin toss to begin' : (tp.picks_complete ? 'All players selected. Please finalize the roster.' : (isMyTurn? 'Your turn' : `Waiting for ${(tp.next_team===1?(commander1&&((commander1.steam&&commander1.steam.nickname)||commander1.id)):(commander2&&((commander2.steam&&commander2.steam.nickname)||commander2.id))) || 'commander'} to pick`)));
-        const coin = tp.coin_winner_team? `<span class="badge-soft">Coin: Team ${tp.coin_winner_team}</span>` : (isFinal? '' : '<button id="tpCoin" class="btn btn-xs">Coin toss</button>');
-        const commanderIds = new Set([
-          commander1 && commander1.id ? String(commander1.id) : '',
-          commander2 && commander2.id ? String(commander2.id) : ''
-        ]);
-        const eligible = (tp.roster||[]).filter(r=>{
-          const sid = String(r.steam_id||'');
-          if (!sid) return false;
-          if (commanderIds.has(sid)) return false; // exclude commanders from pool
-          return !(tp.picks||[]).some(p=>p.player && String(p.player.steam_id)===sid);
-        });
-        const rosterHtml = eligible.map(r=>{ const nick = (r.steam&&r.steam.nickname) || r.name || r.steam_id; const av = (r.steam&&r.steam.avatar)?`<img src="${r.steam.avatar}" class="tp-avatar-sm mr-2"/>`:''; const dis = (!tp.coin_winner_team||isFinal||!isMyTurn)?'disabled':''; return `<button class="btn btn-xs" data-sid="${r.steam_id}" ${dis}>${av}<span class="truncate">${nick}</span></button>`; }).join(' ');
-        const commandersTop = `
-          <div class="tp-header">
-            <div class="tp-card tp-card-accent-1"><div class="card-body">${c1}</div></div>
-            <div class="tp-card tp-card-accent-2"><div class="card-body">${c2}</div></div>
-          </div>`;
-        mBody.innerHTML = `
-          <div>
-            <div class="tp-section">${commandersTop}</div>
-            ${isFinal ? '<div class="tp-banner-final">Finalized roster</div>' : ''}
-            <div class="tp-section tp-status"><span>${coin}</span><span>${waitingText}</span></div>
-            ${ (tp.accepted && (tp.accepted.commander1 || tp.accepted.commander2) && !(tp.accepted.commander1 && tp.accepted.commander2)) ? `<div class=\"alert bg-base-200 border border-base-300 text-xs tp-section\">Waiting for the other commander to finalize…</div>` : ''}
-            <div class="tp-lists tp-section">
-              <div class="tp-card tp-card-accent-1"><div class="card-body">
-                <div class="tp-list-title">Team 1</div>
-                ${team1Picks}
-              </div></div>
-              <div class="tp-card tp-card-accent-2"><div class="card-body">
-                <div class="tp-list-title">Team 2</div>
-                ${team2Picks}
-              </div></div>
-            </div>
-            <div class="tp-pool tp-section"><div class="tp-pool-title">Eligible players</div><div id="tpRoster" class="flex flex-wrap gap-2">${rosterHtml || '<span class=\"opacity-70 text-sm\">No eligible players</span>'}</div></div>
-            <div class="flex flex-wrap gap-2 tp-section">
-              <button id="tpPickRandom" class="btn btn-sm" ${(eligible.length===0||isFinal||!isMyTurn)?'disabled':''}>Pick random</button>
-              <button id="tpFinalize" class="btn btn-sm btn-primary" ${(tp.picks_complete && !isFinal)?'' : 'disabled'}>Finalize</button>
-              <button id="tpRestart" class="btn btn-sm">Restart</button>
-              <button id="tpClear" class="btn btn-sm btn-outline" ${isFinal?'disabled':''}>Clear</button>
-            </div>
-            <div id="tpErr" class="text-xs text-error mt-2"></div>
-          </div>`;
-        const btnCoin = document.getElementById('tpCoin');
-        if (btnCoin && !isFinal) btnCoin.onclick = async ()=>{ const b=btnCoin; b.disabled=true; b.textContent='Tossing…'; setTimeout(async ()=>{ try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/coin_toss`, {method:'POST', credentials:'same-origin'}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); window.__RENDER_TP && window.__RENDER_TP(j.session);} catch {} }, 1200); };
-        const roster = document.getElementById('tpRoster');
-        if (roster) roster.querySelectorAll('button[data-sid]').forEach(btn=>{ btn.addEventListener('click', async ()=>{ const sid = btn.getAttribute('data-sid'); if(!sid) return; btn.disabled = true; try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/pick`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body: JSON.stringify({player_steam_id: sid})}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); window.__RENDER_TP && window.__RENDER_TP(j.session);} catch {} }); });
-        const canAct = tp.your_role==='commander1' || tp.your_role==='commander2';
-        const btnFin = document.getElementById('tpFinalize'); if (btnFin) { if (!canAct || isFinal) btnFin.disabled = true; btnFin.onclick = async ()=>{ try { const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/finalize`, {method:'POST', credentials:'same-origin'}); if(!resp.ok){ const err=document.getElementById('tpErr'); if(err){ err.textContent = resp.status===401?'Please sign in to finalize.': (resp.status===403?'Only commanders can finalize.':'Unable to finalize.'); } return;} } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); window.__RENDER_TP && window.__RENDER_TP(j.session);} catch {} }; }
-        const btnRestart = document.getElementById('tpRestart'); if (btnRestart) { if (!canAct) btnRestart.disabled = true; btnRestart.onclick = async ()=>{ if(!confirm('Cancel current Team Picker and start over?')) return; btnRestart.disabled=true; try { const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/restart`, {method:'POST', credentials:'same-origin'}); if(!resp.ok){ const err=document.getElementById('tpErr'); if(err){ err.textContent = resp.status===401?'Please sign in to restart Team Picker.': (resp.status===403?'Only commanders can restart Team Picker.':'Unable to restart.'); } btnRestart.disabled=false; return;} } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); window.__RENDER_TP && window.__RENDER_TP(j.session);} catch {} }; }
-        const btnClear = document.getElementById('tpClear'); if (btnClear) { if (!canAct || isFinal) btnClear.disabled = true; btnClear.onclick = async ()=>{ if(!confirm('Clear Team Picker for this session? This will remove all picks.')) return; btnClear.disabled=true; try { const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/clear`, {method:'POST', credentials:'same-origin'}); if(!resp.ok){ const err=document.getElementById('tpErr'); if(err){ err.textContent = resp.status===401?'Please sign in to clear Team Picker.': (resp.status===403?'Only commanders can clear Team Picker.':'Unable to clear Team Picker.'); } btnClear.disabled=false; return;} } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); window.__RENDER_TP && window.__RENDER_TP(j.session);} catch {} }; }
-        const btnRand = document.getElementById('tpPickRandom'); if (btnRand) { if (!canAct) btnRand.disabled = true; btnRand.onclick = async ()=>{ if (!eligible || eligible.length===0) return; btnRand.disabled = true; const pick = eligible[Math.floor(Math.random()*eligible.length)]; try { const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/pick`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body: JSON.stringify({player_steam_id: pick.steam_id})}); if(!resp.ok){ const err=document.getElementById('tpErr'); if(err){ err.textContent = resp.status===401?'Please sign in to pick.': (resp.status===403?'It is not your turn to pick.':'Unable to pick.'); } btnRand.disabled=false; return;} } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); window.__RENDER_TP && window.__RENDER_TP(j.session);} catch {} }; }
-
-        // Auto-pick removed
-      }
       grid.appendChild(card);
     });
     // no-op: no skeleton placeholder behavior
+  }
+
+  async function openTeamPickerModal(s){
+    try {
+      const res = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`);
+      const data = await res.json();
+      mTitle.textContent = 'Team Picker';
+      const sess = data && data.session;
+      if (!sess) {
+        const isPre = (s.state === 'PreGame');
+        const needTwo = '<div class="text-xs opacity-70">Team Picker requires both commanders to be signed in.</div>';
+        let isAuthed = false;
+        try { const me = await fetch('/api/v1/me', {credentials:'same-origin'}); const mj = await me.json(); isAuthed = !!(mj && mj.user); } catch {}
+        mBody.innerHTML = `<div class="space-y-4">
+          <div class="text-sm opacity-80">No Team Picker has been started for this session yet.</div>
+          ${!isPre?'<div class="alert bg-base-200 border border-base-300 text-xs">Team Picker is only available in PreGame.</div>':''}
+          ${needTwo}
+          ${isAuthed ? `<div><button id="tpStart" class="btn btn-sm btn-primary mt-2" ${!isPre?'disabled':''}>Start Team Picker</button></div>` : '<div class="text-xs opacity-70">Sign in as a commander to start the Team Picker.</div>'}
+          <div id="tpStartErr" class="text-xs text-error"></div>
+        </div>`;
+        daisyModal.showModal();
+        const btn = document.getElementById('tpStart');
+        if (btn) btn.onclick = async ()=>{
+          try {
+            const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/start`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin'});
+            if (!resp.ok) {
+              let msg = 'Unable to start Team Picker.';
+              try { const j = await resp.json(); if (j && j.error === 'missing_commanders') msg = 'Could not detect two commanders. Team Picker requires two commanders with Steam IDs.'; if (j && j.error === 'not_pregame') msg = 'Team Picker is only available while the game is in PreGame.'; if (j && j.error==='both_commanders_required') msg='Both commanders must be signed in to start Team Picker.'; } catch {}
+              const err = document.getElementById('tpStartErr'); if (err) { err.textContent = msg; }
+              return;
+            }
+          } catch {}
+          try {
+            const r = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`);
+            const j = await r.json();
+            renderTP(j.session);
+            try { window.__TP_OPEN__ = s.id; } catch {}
+            try { if (socket && window.__REALTIME__) { socket.emit('join', { room: `team_picker:${s.id}` }); } } catch {}
+            try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/presence`, {method:'POST', credentials:'same-origin'}); } catch {}
+          } catch {}
+        };
+        return;
+      }
+      renderTP(sess);
+      daisyModal.showModal();
+      window.__TP_OPEN__ = s.id;
+      try { if (socket && window.__REALTIME__) { socket.emit('join', { room: `team_picker:${s.id}` }); } } catch {}
+      try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/presence`, {method:'POST', credentials:'same-origin'}); } catch {}
+    } catch {}
   }
 
   function url() {
@@ -399,6 +350,7 @@
   // Initialize sidebar user section
   (async function initSidebarUser(){
     const { user } = await fetchMe();
+    try { window.__ME__ = user || null; } catch {}
     if (user) {
       if (sbSignedOut) sbSignedOut.classList.add('hidden');
       if (sbSignedIn) sbSignedIn.classList.remove('hidden');
