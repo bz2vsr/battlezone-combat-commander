@@ -124,6 +124,7 @@
       const initialInd = fresh ? (initialActive ? 'Team Picker active' : 'No Team Picker') : 'Checking Team Picker…';
       const initialBtnText = initialActive ? (isCommander ? 'Open Team Picker' : 'View Team Picker') : (isCommander ? 'Start Team Picker' : 'View Team Picker');
       const initialBtnDisabled = initialActive ? false : !isCommander;
+      try { console.debug('[TP][card] render', { sid: s.id, sidKey, isCommander, fresh, cached }); } catch {}
       card.innerHTML = `
         <div class="flex flex-wrap gap-2 items-center">
           <span class="${((s.state||'')==='InGame') ? 'badge-accent-soft' : 'badge-soft'}">${s.state || 'Unknown'}</span>
@@ -156,6 +157,7 @@
       const ind = card.querySelector(`#tpInd-${sidKey}`);
       // Use cached status immediately if fresh (<10s)
       const applyUI = (active)=>{
+        try { console.debug('[TP][card] applyUI', { sid: s.id, active, isCommander }); } catch {}
         if (ind) ind.textContent = active ? 'Team Picker active' : 'No Team Picker';
         if (btn) {
           if (active) {
@@ -165,7 +167,7 @@
             btn.textContent = isCommander ? 'Start Team Picker' : 'View Team Picker';
             btn.disabled = !isCommander;
           }
-          btn.onclick = ()=> openTeamPickerModal(s);
+          btn.onclick = ()=> { try { console.debug('[TP][card] button click', { sid: s.id }); } catch {} openTeamPickerModal(s); };
         }
       };
       if (fresh) applyUI(!!cached.active);
@@ -173,12 +175,16 @@
       if (!fresh) {
         (async ()=>{
           try {
+            console.debug('[TP][card] fetch status', { sid: s.id });
             const r = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`);
             const j = await r.json();
+            console.debug('[TP][card] status resp', { sid: s.id, json: j });
             const active = !!(j && j.session);
             cache.set(s.id, { active, ts: Date.now() });
             applyUI(active);
-          } catch { /* ignore */ }
+          } catch (e) {
+            try { console.debug('[TP][card] status error', { sid: s.id, error: String(e) }); } catch {}
+          }
         })();
       }
 
@@ -189,15 +195,17 @@
 
   async function openTeamPickerModal(s){
     try {
+      console.debug('[TP][modal] open begin', { sid: s.id });
       const res = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`);
       const data = await res.json();
+      console.debug('[TP][modal] get resp', { sid: s.id, json: data });
       mTitle.textContent = 'Team Picker';
       const sess = data && data.session;
       if (!sess) {
         const isPre = (s.state === 'PreGame');
         const needTwo = '<div class="text-xs opacity-70">Team Picker requires both commanders to be signed in.</div>';
         let isAuthed = false;
-        try { const me = await fetch('/api/v1/me', {credentials:'same-origin'}); const mj = await me.json(); isAuthed = !!(mj && mj.user); } catch {}
+        try { const me = await fetch('/api/v1/me', {credentials:'same-origin'}); const mj = await me.json(); isAuthed = !!(mj && mj.user); } catch (e) { try { console.debug('[TP][modal] /me error', String(e)); } catch {} }
         mBody.innerHTML = `<div class="space-y-4">
           <div class="text-sm opacity-80">No Team Picker has been started for this session yet.</div>
           ${!isPre?'<div class="alert bg-base-200 border border-base-300 text-xs">Team Picker is only available in PreGame.</div>':''}
@@ -209,32 +217,40 @@
         const startBtn = document.getElementById('tpStart');
         if (startBtn) startBtn.onclick = async ()=>{
           try {
+            console.debug('[TP][modal] start click', { sid: s.id });
             const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/start`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin'});
             if (!resp.ok) {
               let msg = 'Unable to start Team Picker.';
               try { const j = await resp.json(); if (j && j.error === 'missing_commanders') msg = 'Could not detect two commanders. Team Picker requires two commanders with Steam IDs.'; if (j && j.error === 'not_pregame') msg = 'Team Picker is only available while the game is in PreGame.'; if (j && j.error==='both_commanders_required') msg='Both commanders must be signed in to start Team Picker.'; } catch {}
               const err = document.getElementById('tpStartErr'); if (err) { err.textContent = msg; }
+              console.debug('[TP][modal] start failed', { sid: s.id, status: resp.status });
               return;
             }
-          } catch {}
+          } catch (e) {
+            try { console.debug('[TP][modal] start error', String(e)); } catch {}
+          }
           try {
             const r = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`);
             const j = await r.json();
+            console.debug('[TP][modal] post-start get resp', { sid: s.id, json: j });
             renderTP(j.session);
             daisyModal.showModal();
             window.__TP_OPEN__ = s.id;
             try { if (socket && window.__REALTIME__) { socket.emit('join', { room: `team_picker:${s.id}` }); } } catch {}
             try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/presence`, {method:'POST', credentials:'same-origin'}); } catch {}
-          } catch {}
+          } catch (e) { try { console.debug('[TP][modal] post-start load error', String(e)); } catch {} }
         };
         return;
       }
       renderTP(sess);
       daisyModal.showModal();
       window.__TP_OPEN__ = s.id;
+      try { console.debug('[TP][modal] join room', { room: `team_picker:${s.id}` }); } catch {}
       try { if (socket && window.__REALTIME__) { socket.emit('join', { room: `team_picker:${s.id}` }); } } catch {}
       try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/presence`, {method:'POST', credentials:'same-origin'}); } catch {}
-    } catch {}
+    } catch (e) {
+      try { console.debug('[TP][modal] open error', String(e)); } catch {}
+    }
   }
 
   function url() {
