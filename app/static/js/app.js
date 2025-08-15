@@ -218,9 +218,10 @@
           const av = (p.player&&p.player.steam&&p.player.steam.avatar)?`<img src="${p.player.steam.avatar}" class="tp-avatar-sm mr-2"/>`:'';
           return `<div class="flex items-center text-sm">${av}<span class="truncate">${nick}</span></div>`;
         }).join('') || '<span class="opacity-70 text-xs">No picks yet</span>';
+        const isFinal = (tp.state||'').toLowerCase() === 'final';
         const isMyTurn = (tp.your_role==='commander1' && tp.next_team===1) || (tp.your_role==='commander2' && tp.next_team===2);
-        const waitingText = !tp.coin_winner_team ? 'Run coin toss to begin' : (tp.picks_complete ? 'All players selected. Please finalize the roster.' : (isMyTurn? 'Your turn' : `Waiting for ${(tp.next_team===1?(commander1&&((commander1.steam&&commander1.steam.nickname)||commander1.id)):(commander2&&((commander2.steam&&commander2.steam.nickname)||commander2.id))) || 'commander'} to pick`));
-        const coin = tp.coin_winner_team? `<span class="badge-soft">Coin: Team ${tp.coin_winner_team}</span>` : '<button id="tpCoin" class="btn btn-xs">Coin toss</button>';
+        const waitingText = isFinal ? 'Roster finalized. Use Restart to begin again.' : (!tp.coin_winner_team ? 'Run coin toss to begin' : (tp.picks_complete ? 'All players selected. Please finalize the roster.' : (isMyTurn? 'Your turn' : `Waiting for ${(tp.next_team===1?(commander1&&((commander1.steam&&commander1.steam.nickname)||commander1.id)):(commander2&&((commander2.steam&&commander2.steam.nickname)||commander2.id))) || 'commander'} to pick`)));
+        const coin = tp.coin_winner_team? `<span class="badge-soft">Coin: Team ${tp.coin_winner_team}</span>` : (isFinal? '' : '<button id="tpCoin" class="btn btn-xs">Coin toss</button>');
         const commanderIds = new Set([
           commander1 && commander1.id ? String(commander1.id) : '',
           commander2 && commander2.id ? String(commander2.id) : ''
@@ -231,7 +232,7 @@
           if (commanderIds.has(sid)) return false; // exclude commanders from pool
           return !(tp.picks||[]).some(p=>p.player && String(p.player.steam_id)===sid);
         });
-        const rosterHtml = eligible.map(r=>{ const nick = (r.steam&&r.steam.nickname) || r.name || r.steam_id; const av = (r.steam&&r.steam.avatar)?`<img src="${r.steam.avatar}" class="tp-avatar-sm mr-2"/>`:''; return `<button class="btn btn-xs" data-sid="${r.steam_id}" ${!tp.coin_winner_team?'disabled':''}>${av}<span class="truncate">${nick}</span></button>`; }).join(' ');
+        const rosterHtml = eligible.map(r=>{ const nick = (r.steam&&r.steam.nickname) || r.name || r.steam_id; const av = (r.steam&&r.steam.avatar)?`<img src="${r.steam.avatar}" class="tp-avatar-sm mr-2"/>`:''; const dis = (!tp.coin_winner_team||isFinal||!isMyTurn)?'disabled':''; return `<button class="btn btn-xs" data-sid="${r.steam_id}" ${dis}>${av}<span class="truncate">${nick}</span></button>`; }).join(' ');
         const commandersTop = `
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-0 mb-4 md:mb-6">
             <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">${c1}</div></div>
@@ -239,16 +240,12 @@
           </div>`;
         mBody.innerHTML = `
           <div>
-            ${commandersTop}
-            <div class="flex gap-2 items-center text-sm mt-2 md:mt-3">
-              <span class="badge-soft">${tp.state}</span>${coin}
-              <span class="text-xs opacity-70">${tp.next_team?`Team ${tp.next_team}'s turn`:(!tp.coin_winner_team?'Run coin toss to begin':'')}</span>
-              <span class="ml-auto text-xs">${(commander1&&commander1.active)?'<span class="dot sm ok"></span>':''} ${(commander1&&((commander1.steam&&commander1.steam.nickname)||commander1.id))||''}</span>
-              <span class="text-xs">${(commander2&&commander2.active)?'<span class="dot sm ok"></span>':''} ${(commander2&&((commander2.steam&&commander2.steam.nickname)||commander2.id))||''}</span>
-            </div>
-            ${ (tp.accepted && (tp.accepted.commander1 || tp.accepted.commander2) && !(tp.accepted.commander1 && tp.accepted.commander2)) ? `<div class=\"alert bg-base-200 border border-base-300 text-xs mt-2\">Waiting for the other commander to finalize…</div>` : ''}
-            <div class="alert bg-base-200 border border-base-300 text-xs mt-2 md:mt-3">${waitingText}</div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-3 md:mt-4">
+            <div class="tp-section">${commandersTop}</div>
+            ${isFinal ? '<div class="tp-banner-final">Finalized roster</div>' : ''}
+            <div class="tp-section flex gap-2 items-center text-sm"><span class="badge-soft">${tp.state}</span>${coin}<span class="text-xs opacity-70">${tp.next_team?`Team ${tp.next_team}'s turn`:(!tp.coin_winner_team?'Run coin toss to begin':'')}</span></div>
+            ${ (tp.accepted && (tp.accepted.commander1 || tp.accepted.commander2) && !(tp.accepted.commander1 && tp.accepted.commander2)) ? `<div class=\"alert bg-base-200 border border-base-300 text-xs tp-section\">Waiting for the other commander to finalize…</div>` : ''}
+            <div class="alert bg-base-200 border border-base-300 text-xs tp-section">${waitingText}</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 tp-section">
               <div class="card bg-base-100 border border-base-300"><div class="card-body p-3">
                 <div class="flex items-center justify-between mb-2">
                   <div class="text-sm opacity-70">Team 1</div>
@@ -262,23 +259,23 @@
                 ${team2Picks}
               </div></div>
             </div>
-            <div class="flex flex-wrap gap-2 mt-3 md:mt-4" id="tpRoster">${rosterHtml || '<span class="opacity-70 text-sm">No eligible players</span>'}</div>
-            <div class="flex gap-2 mt-4 md:mt-5">
-              <button id="tpPickRandom" class="btn btn-sm" ${eligible.length===0?'disabled':''}>Pick random</button>
-              <button id="tpFinalize" class="btn btn-sm btn-primary" ${tp.picks_complete?'' : 'disabled'}>Finalize</button>
+            <div class="flex flex-wrap gap-2 tp-section" id="tpRoster">${rosterHtml || '<span class="opacity-70 text-sm">No eligible players</span>'}</div>
+            <div class="flex flex-wrap gap-2 tp-section">
+              <button id="tpPickRandom" class="btn btn-sm" ${(eligible.length===0||isFinal||!isMyTurn)?'disabled':''}>Pick random</button>
+              <button id="tpFinalize" class="btn btn-sm btn-primary" ${(tp.picks_complete && !isFinal)?'':'disabled'}>Finalize</button>
               <button id="tpRestart" class="btn btn-sm">Restart</button>
-              <button id="tpClear" class="btn btn-sm btn-outline">Clear</button>
+              <button id="tpClear" class="btn btn-sm btn-outline" ${isFinal?'disabled':''}>Clear</button>
             </div>
             <div id="tpErr" class="text-xs text-error mt-2"></div>
           </div>`;
         const btnCoin = document.getElementById('tpCoin');
-        if (btnCoin) btnCoin.onclick = async ()=>{ const b=btnCoin; b.disabled=true; b.textContent='Tossing…'; setTimeout(async ()=>{ try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/coin_toss`, {method:'POST', credentials:'same-origin'}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); window.__RENDER_TP && window.__RENDER_TP(j.session);} catch {} }, 1200); };
+        if (btnCoin && !isFinal) btnCoin.onclick = async ()=>{ const b=btnCoin; b.disabled=true; b.textContent='Tossing…'; setTimeout(async ()=>{ try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/coin_toss`, {method:'POST', credentials:'same-origin'}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); window.__RENDER_TP && window.__RENDER_TP(j.session);} catch {} }, 1200); };
         const roster = document.getElementById('tpRoster');
         if (roster) roster.querySelectorAll('button[data-sid]').forEach(btn=>{ btn.addEventListener('click', async ()=>{ const sid = btn.getAttribute('data-sid'); if(!sid) return; btn.disabled = true; try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/pick`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body: JSON.stringify({player_steam_id: sid})}); } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); window.__RENDER_TP && window.__RENDER_TP(j.session);} catch {} }); });
         const canAct = tp.your_role==='commander1' || tp.your_role==='commander2';
-        const btnFin = document.getElementById('tpFinalize'); if (btnFin) { if (!canAct) btnFin.disabled = true; btnFin.onclick = async ()=>{ try { const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/finalize`, {method:'POST', credentials:'same-origin'}); if(!resp.ok){ const err=document.getElementById('tpErr'); if(err){ err.textContent = resp.status===401?'Please sign in to finalize.': (resp.status===403?'Only commanders can finalize.':'Unable to finalize.'); } return;} } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); window.__RENDER_TP && window.__RENDER_TP(j.session);} catch {} }; }
+        const btnFin = document.getElementById('tpFinalize'); if (btnFin) { if (!canAct || isFinal) btnFin.disabled = true; btnFin.onclick = async ()=>{ try { const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/finalize`, {method:'POST', credentials:'same-origin'}); if(!resp.ok){ const err=document.getElementById('tpErr'); if(err){ err.textContent = resp.status===401?'Please sign in to finalize.': (resp.status===403?'Only commanders can finalize.':'Unable to finalize.'); } return;} } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); window.__RENDER_TP && window.__RENDER_TP(j.session);} catch {} }; }
         const btnRestart = document.getElementById('tpRestart'); if (btnRestart) { if (!canAct) btnRestart.disabled = true; btnRestart.onclick = async ()=>{ if(!confirm('Cancel current Team Picker and start over?')) return; btnRestart.disabled=true; try { const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/restart`, {method:'POST', credentials:'same-origin'}); if(!resp.ok){ const err=document.getElementById('tpErr'); if(err){ err.textContent = resp.status===401?'Please sign in to restart Team Picker.': (resp.status===403?'Only commanders can restart Team Picker.':'Unable to restart.'); } btnRestart.disabled=false; return;} } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); window.__RENDER_TP && window.__RENDER_TP(j.session);} catch {} }; }
-        const btnClear = document.getElementById('tpClear'); if (btnClear) { if (!canAct) btnClear.disabled = true; btnClear.onclick = async ()=>{ if(!confirm('Clear Team Picker for this session? This will remove all picks.')) return; btnClear.disabled=true; try { const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/clear`, {method:'POST', credentials:'same-origin'}); if(!resp.ok){ const err=document.getElementById('tpErr'); if(err){ err.textContent = resp.status===401?'Please sign in to clear Team Picker.': (resp.status===403?'Only commanders can clear Team Picker.':'Unable to clear Team Picker.'); } btnClear.disabled=false; return;} } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); window.__RENDER_TP && window.__RENDER_TP(j.session);} catch {} }; }
+        const btnClear = document.getElementById('tpClear'); if (btnClear) { if (!canAct || isFinal) btnClear.disabled = true; btnClear.onclick = async ()=>{ if(!confirm('Clear Team Picker for this session? This will remove all picks.')) return; btnClear.disabled=true; try { const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/clear`, {method:'POST', credentials:'same-origin'}); if(!resp.ok){ const err=document.getElementById('tpErr'); if(err){ err.textContent = resp.status===401?'Please sign in to clear Team Picker.': (resp.status===403?'Only commanders can clear Team Picker.':'Unable to clear Team Picker.'); } btnClear.disabled=false; return;} } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); window.__RENDER_TP && window.__RENDER_TP(j.session);} catch {} }; }
         const btnRand = document.getElementById('tpPickRandom'); if (btnRand) { if (!canAct) btnRand.disabled = true; btnRand.onclick = async ()=>{ if (!eligible || eligible.length===0) return; btnRand.disabled = true; const pick = eligible[Math.floor(Math.random()*eligible.length)]; try { const resp = await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}/pick`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body: JSON.stringify({player_steam_id: pick.steam_id})}); if(!resp.ok){ const err=document.getElementById('tpErr'); if(err){ err.textContent = resp.status===401?'Please sign in to pick.': (resp.status===403?'It is not your turn to pick.':'Unable to pick.'); } btnRand.disabled=false; return;} } catch {}; try { const r=await fetch(`/api/v1/team_picker/${encodeURIComponent(s.id)}`); const j=await r.json(); window.__RENDER_TP && window.__RENDER_TP(j.session);} catch {} }; }
 
         // Auto-pick removed

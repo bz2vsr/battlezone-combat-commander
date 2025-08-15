@@ -9,4 +9,6 @@
 /* Team Picker avatar sizing to match gamecard aesthetics */
 .tp-avatar { width:24px; height:24px; border-radius:9999px; object-fit:cover; display:inline-block; }
 .tp-avatar-sm { width:16px; height:16px; border-radius:9999px; object-fit:cover; display:inline-block; }
+.tp-section { margin-top: 12px; margin-bottom: 12px; }
+.tp-banner-final { margin: 8px 0; padding: 6px 10px; border:1px solid #3f2d56; background: linear-gradient(90deg, rgba(86,27,120,0.35), rgba(0,0,0,0)); color:#ddc6ff; font-size:12px; letter-spacing:0.2px; border-radius:6px; }
 
