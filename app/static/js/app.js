@@ -77,7 +77,7 @@
     sessions.forEach(s => {
       const card = document.createElement('div');
       card.className = 'card bg-base-200 border border-base-300 p-3';
-      const title = (((s.level && s.level.name) || '') + ' ' + ((s.name || ''))).toLowerCase();
+      const title = (((s.level && s.level.name) || '') + ' ' + ((s.name || '')).toLowerCase());
       const isFFA = /(ffa|deathmatch|\bdm\b)/.test(title);
       const playersHtml = `
         <div class="mt-2 text-sm leading-6">
@@ -113,6 +113,17 @@
         </div>`;
       const a = s.attributes || {};
       const sidKey = String(s.id||'').replace(/[^a-zA-Z0-9_-]/g, '_');
+      // Cache-backed initial state to avoid flashing
+      const cache = (window.__TP_STATUS_CACHE__ ||= new Map());
+      const cached = cache.get(s.id);
+      const fresh = cached && (Date.now() - cached.ts < 10000);
+      const me = (window.__ME__||null);
+      const commanderIds = new Set((s.players||[]).filter(p=>p.is_host && p.steam && p.steam.id).map(p=>String(p.steam.id)));
+      const isCommander = !!(me && me.provider==='steam' && me.id && commanderIds.has(String(me.id)));
+      const initialActive = fresh ? !!cached.active : false;
+      const initialInd = fresh ? (initialActive ? 'Team Picker active' : 'No Team Picker') : 'Checking Team Picker…';
+      const initialBtnText = initialActive ? (isCommander ? 'Open Team Picker' : 'View Team Picker') : (isCommander ? 'Start Team Picker' : 'View Team Picker');
+      const initialBtnDisabled = initialActive ? false : !isCommander;
       card.innerHTML = `
         <div class="flex flex-wrap gap-2 items-center">
           <span class="${((s.state||'')==='InGame') ? 'badge-accent-soft' : 'badge-soft'}">${s.state || 'Unknown'}</span>
@@ -135,21 +146,15 @@
         ${s.level && s.level.image ? `<div class="mt-2 card bg-base-100 border border-base-300"><div class="card-body p-3"><img alt="map" class="map-thumb" src="${s.level.image}"/></div></div>` : ''}
         ${isFFA ? playersHtml : teamsHtml}
         <div class="mt-2 flex items-center justify-between">
-          <div id="tpInd-${sidKey}" class="text-xs opacity-70">Checking Team Picker…</div>
-          <button id="tpBtn-${sidKey}" class="btn btn-sm">Open</button>
+          <div id="tpInd-${sidKey}" class="text-xs opacity-70">${initialInd}</div>
+          <button id="tpBtn-${sidKey}" class="btn btn-sm" ${initialBtnDisabled?'disabled':''}>${initialBtnText}</button>
         </div>
       `;
 
       // Decide label/visibility asynchronously with minimal caching
-      const me = (window.__ME__||null);
-      const commanderIds = new Set((s.players||[]).filter(p=>p.is_host && p.steam && p.steam.id).map(p=>String(p.steam.id)));
-      const isCommander = !!(me && me.provider==='steam' && me.id && commanderIds.has(String(me.id)));
       const btn = card.querySelector(`#tpBtn-${sidKey}`);
       const ind = card.querySelector(`#tpInd-${sidKey}`);
       // Use cached status immediately if fresh (<10s)
-      const now = Date.now();
-      const cached = cache.get(s.id);
-      const fresh = cached && (now - cached.ts < 10000);
       const applyUI = (active)=>{
         if (ind) ind.textContent = active ? 'Team Picker active' : 'No Team Picker';
         if (btn) {
