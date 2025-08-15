@@ -521,7 +521,7 @@ def create_app() -> Flask:
     @app.get("/api/v1/team_picker/<path:session_id>")
     def team_picker_get(session_id: str):
         resp = _build_team_picker_state(session_id)
-            return jsonify({"session": resp})
+        return jsonify({"session": resp})
 
     @app.post("/api/v1/team_picker/<path:session_id>/start")
     def team_picker_start(session_id: str):
@@ -1000,6 +1000,42 @@ def create_app() -> Flask:
         except Exception:
             pass
         return team_picker_get(session_id)
+
+    @app.post("/api/v1/team_picker/<path:session_id>/clear")
+    def team_picker_clear(session_id: str):
+        uid = session.get('uid')
+        if not uid:
+            return jsonify({"ok": False, "error": "not_authenticated"}), 401
+        provider, external = uid.split(":", 1)
+        from app.db import session_scope
+        from app.models import TeamPickSession, TeamPickParticipant
+        from sqlalchemy import select as _select, delete as _delete
+        with session_scope() as db:
+            # Find latest session (any state) to check permissions
+            latest = db.execute(
+                _select(TeamPickSession).where(TeamPickSession.session_id == session_id).order_by(TeamPickSession.id.desc())
+            ).scalars().first()
+            if not latest:
+                return jsonify({"session": None})
+            allowed = False
+            if latest.created_by_provider == provider and latest.created_by_external_id == external:
+                allowed = True
+            else:
+                pr = db.execute(
+                    _select(TeamPickParticipant).where(TeamPickParticipant.pick_session_id == latest.id, TeamPickParticipant.provider == provider, TeamPickParticipant.external_id == external)
+                ).scalars().first()
+                if pr and pr.role in ("commander1", "commander2"):
+                    allowed = True
+            if not allowed:
+                return jsonify({"ok": False, "error": "forbidden"}), 403
+            # Delete all Team Picker sessions for this game session (cascades remove picks/participants)
+            db.execute(_delete(TeamPickSession).where(TeamPickSession.session_id == session_id))
+        try:
+            if socketio:
+                socketio.emit("team_picker:update", {"session_id": session_id, "action": "clear", "session": None}, room=f"team_picker:{session_id}", broadcast=True)
+        except Exception:
+            pass
+        return jsonify({"session": None})
 
     # Simple Admin Tools (scaffold)
     @app.get("/admin")
