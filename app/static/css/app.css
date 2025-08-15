@@ -9,6 +9,20 @@
 /* Team Picker avatar sizing to match gamecard aesthetics */
 .tp-avatar { width:24px; height:24px; border-radius:9999px; object-fit:cover; display:inline-block; }
 .tp-avatar-sm { width:16px; height:16px; border-radius:9999px; object-fit:cover; display:inline-block; }
-.tp-section { margin-top: 12px; margin-bottom: 12px; }
-.tp-banner-final { margin: 8px 0; padding: 6px 10px; border:1px solid #3f2d56; background: linear-gradient(90deg, rgba(86,27,120,0.35), rgba(0,0,0,0)); color:#ddc6ff; font-size:12px; letter-spacing:0.2px; border-radius:6px; }
+/* Enhanced Team Picker layout */
+.tp-avatar-lg { width:32px; height:32px; border-radius:9999px; object-fit:cover; display:inline-block; }
+.tp-section { margin-top: 14px; margin-bottom: 14px; }
+.tp-banner-final { margin: 8px 0; padding: 8px 12px; border:1px solid #3f2d56; background: linear-gradient(90deg, rgba(86,27,120,0.35), rgba(0,0,0,0)); color:#ddc6ff; font-size:12px; letter-spacing:0.2px; border-radius:8px; }
+.tp-header { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+.tp-commander { display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid #2b3140; border-radius:10px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0)); }
+.tp-commander .name { font-weight:600; font-size:14px; }
+.tp-lists { display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
+.tp-card { border:1px solid #2b3140; border-radius:10px; background: linear-gradient(180deg, rgba(21,25,34,0.6), rgba(0,0,0,0.35)); }
+.tp-card .card-body { padding:12px; }
+.tp-card-accent-1 { box-shadow: inset 0 2px 0 0 rgba(163, 108, 255, 0.45); }
+.tp-card-accent-2 { box-shadow: inset 0 2px 0 0 rgba(95, 205, 255, 0.35); }
+.tp-list-title { font-size:13px; opacity:0.8; margin-bottom:8px; }
+.tp-status { display:flex; align-items:center; gap:10px; font-size:12px; padding:8px 10px; border:1px dashed #30384a; border-radius:10px; background: rgba(20,24,33,0.5); }
+.tp-pool { border:1px solid #2b3140; border-radius:10px; background: rgba(16,20,28,0.7); padding:10px; }
+.tp-pool-title { font-size:13px; opacity:0.8; margin-bottom:8px; }
 
