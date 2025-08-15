@@ -536,6 +536,12 @@
             try { window.__TP_OPEN__ = s.session_id; } catch {}
             const tTitle=document.getElementById('appModalTitle'); if (tTitle) tTitle.textContent='Team Picker';
             renderTP(t); modalEl?.showModal();
+            // Ensure we join the realtime room and begin presence heartbeats when opened via invite
+            try { if (socket && window.__REALTIME__) { socket.emit('join', { room: `team_picker:${s.session_id}` }); } } catch {}
+            try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.session_id)}/presence`, {method:'POST', credentials:'same-origin'}); } catch {}
+            let tpPresenceTimer = setInterval(async ()=>{ try { await fetch(`/api/v1/team_picker/${encodeURIComponent(s.session_id)}/presence`, {method:'POST', credentials:'same-origin'}); } catch {} }, 10000);
+            const onClose = ()=>{ window.__TP_OPEN__ = null; try { if (socket && window.__REALTIME__) { socket.emit('leave', { room: `team_picker:${s.session_id}` }); } } catch {}; if (tpPresenceTimer) { clearInterval(tpPresenceTimer); tpPresenceTimer=null; } modalEl?.removeEventListener('close', onClose); };
+            modalEl?.addEventListener('close', onClose);
           } catch {}
         };
         const dismissBtn = document.getElementById('tpDismiss'); if (dismissBtn) dismissBtn.onclick = ()=>{ modalEl?.close(); tpPromptOpen=false; };
