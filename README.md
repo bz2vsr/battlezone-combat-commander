@@ -1,5 +1,9 @@
-A Python/Flask web app that ingests real-time Battlezone: Combat Commander game sessions, enriches them with Steam/GOG metadata, mirrors all assets, provides a modern live GameWatch UI, and stores historical analytics with provider-agnostic authentication.
+<img width="1734" height="1060" alt="image" src="https://github.com/user-attachments/assets/dabee51f-753d-4c1e-a15c-c4ffa1666ffe" />
 
-WIP: attempting to create a Team Picker which requires both commanders be signed into the site, and allows them to pick from the list of players within their game. 
+<br>An early-concept Python/Flask web app that ingests real-time BZCC game session data directly from Raknet API, enriches it with Steam/GOG metadata to provide features like online presence and team picking, and stores historical analytics with provider-agnostic authentication. 
 
-NOTE: this is abandoned; anyone who wants to continue it is free to use this code however they please.
+[![warning](https://img.shields.io/badge/NOTICE-Project_abandoned-red)](#)
+
+**This project is abandoned: anyone who wants to continue building on it is free to use this code however they please, with no attribution required.**
+
+Team Picker Idea (needs work, mostly broken still): if both commanders are in the same game and signed in to the site, they can start a team picker. TP includes coin-flip and turn-based picking from the pool of players in the game. Anyone can watch the picking occur. 
